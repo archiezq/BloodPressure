@@ -1,78 +1,4 @@
 #%%
-'''
-    Lex M. van Loon (lexmaxim.vanloon@anu.edu.au)
-    College of Health and Medicine
-    Australian National University (ANU)
-    
-    MIT License, Copyright (c) 2024 Lex M. van Loon
-    
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-    
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-    
-    Schematic overview of the 21-comaprtment model with:
-    ---
-    |x| -> the compartments, and -x- -> the flows
-    ---
-                       ---         ---
-    ----4--------------|3|----3----|2|--------------2-----
-    |                  ---         ---                   |
-   ---                #0 Ascending Aorta                ---
-   |4|                #1 Upper thoracic artery          |1|
-   ---                #2 Upper body arteries            ---
-    |                 #3 Upper body veins                |
-    5                 #4 Super vena cava                 1
-    |                 #5 Thoracic aorta                  |
-    | ----    ----    ----    ----    ----    ----   --- |
-    |-|15|-19-|16|-20-|17|-21-|18|-22-|19|-23-|20|-0-|0|-|
-    | ----    ----    ----    ----    ----    ----   --- |
-    |                 #6 Abdominal aorta                 |
-   18                 #7 Renal arteries                  6
-    |                 #8 Renal veins                     |
-   ---                #9 Splanchnic arteries            ---
-   |14|               #10 Splanchnic veins              |5|
-   ---                #11 Lower body arteries           ---
-    |                 #12 Lower body veins               |
-   17                 #13 Abdominal veins                7
-    |                 #14 Inferioir vena cava            |
-   ---                #15 Right atrium                  ---
-   |13|               #16 Right ventricle               |6|
-   ---                #17 Pulmonoary arteries           ---
-    |                 #18 Pulmonary veins                |
-    |                 #19 Left atrium                    |
-    |                 #20 left ventricle                 |
-    |                   ---         ---                  |
-    ----10--------------|8|----9----|7|-------------8-----
-    |                   ---         ---                  |
-    |                   ---         ---                  |
-    ----13--------------|10|---12---|9|------------11-----
-    |                   ---         ---                  |
-    |                   ---         ---                  |
-    ----16--------------|12|---15---|11|-----------14-----
-                        ---         ---
-
-    This file runs the model
-    -----------------------------------------------------------------
-    
-    version 1.0 - initial
-    
-
-    -----------------------------------------------------------------
-'''
-#%%
 # CVSIM - IMPORT AND DEFINITIONS
 
 import os
@@ -105,252 +31,6 @@ import platform
 
 #import PySimpleGUI as sg
 
-#%%
-# General settings
-
-print('Healthy adult sim run')
-from adultPars_carotid import _init_pars # Get the parameters for resistance, elastance and uvolume
-from controlPars import _init_control # Get the control parameters loaded.
-#from reflexPars import _init_reflex # Get the control parameters loaded.
-planet=1
-fluidLoading=0
-StStest=1
-cerebralModelOn=0
-if cerebralModelOn==1: # Change these
-    cerebralVeinsOn=0
-    carotidOn=1
-else: # Do not change these
-    cerebralVeinsOn=0
-    carotidOn=0
-ABRreflexOn=1; # ABR reflex
-CPRreflexOn=1; # CPR reflex
-micro_switch = 1 # 1 = microcirculation on, 0 = microcirculation off
-bleedingOn,startTimeBleeding,totalTimeBleeding,bleedingVolume=0,150,180,2000;#  time in seconds
-fillingOn,totalTimeFilling,fillingVolume=0,200,1000;#  time in seconds
-
-if cerebralModelOn==1:
-    print("BRAIN = ON")
-    if cerebralVeinsOn==0:
-        print("BRAIN VEINS = OFF")
-    else:
-        print("BRAIN VEINS = ON")
-    if carotidOn==1:
-        print("CAROTID = ON")
-    else:
-        print("CAROTID = OFF")
-else:
-    print("BRAIN = OFF")
-
-# Get all the pars from the different parameters values
-#global subjectPars,controlPars,reflexPars
-subjectPars = _init_pars(); # Here the compartments parameters are assigned
-controlPars=_init_control(); # Get all the control parameters stored to the list 'control'.You can access the heart rate for instance by contorl.hr.
-#reflexPars=_init_reflex(); # Get all the reflex parameters stored to the list 'reflexPars'.
-
-### DEF ###
-def find_index_of_time(time_array, target_time):
-    indices = np.where(time_array == target_time)[0]  # Get indices where target_time occurs
-    if indices.size > 0:  # Check if indices array is not empty
-        return indices[0]  # Return the first index where the target_time occurs
-    else:
-        print(f"Time value {target_time} not found in the array.")
-        return None
-    
-def round_time_series(time_series, decimals=4):
-    return [round(element, decimals) for element in time_series]
-
-def UV_lim(compartment, comp_norm):
-    if compartment < 1/limit*comp_norm:
-        compartment = 1/limit*comp_norm
-        #print("UV lower limit")
-    if compartment > limit*comp_norm:
-        compartment = limit*comp_norm
-        #print("UV upper limit")
-    return compartment
-        
-def R_lim(compartment, comp_norm):
-    if compartment < 1/limit*comp_norm:
-        compartment = 1/limit*comp_norm
-        #print("R lower limit")
-    if compartment > limit*comp_norm:
-        compartment = limit*comp_norm
-        #print("R upper limit")
-    return compartment
-
-def get_data(filename):
-    global data, data_DBP, data_SBP, data_time, data_BP, data_time_10Hz, data_MAP
-    # Load .mat file
-    data = loadmat(filename)
-    data_time = np.squeeze(data['data']['time'][0][0])
-    data_BP = np.squeeze(data['data']['BP'][0][0])
-    data_time_10Hz = np.squeeze(data['data']['time_10Hz'][0][0])
-    data_MAP = np.squeeze(data['data']['map'][0][0])
-    data_SBP = np.squeeze(data['data']['sbp'][0][0])
-    data_DBP = np.squeeze(data['data']['dbp'][0][0])
-    
-def extract_patient_id(filename):
-    # Extract the patient ID using string manipulation
-    # Split the path into parts and find the part that contains 'PHI'
-    parts = filename.split(os.sep)
-    patient_id = None
-    for part in parts:
-        if 'PHI' in part:
-            patient_id = part
-            break
-    
-    # Extracted patient ID
-    if patient_id:
-        print(f'Extracted patient ID: {patient_id}')
-        return patient_id
-    else:
-        print('Patient ID not found in the given file path.')
-
-def alpha_rad_full_func(tilt_time, tau_STS, p=0.25):
-    """
-    Calculate alpha_rad_full with flattened maxima and constant peak value.
-    
-    Parameters:
-    tilt_time (array-like): Time values for the tilt motion.倾斜时间
-    tau_STS (float): Period of the tilt motion.倾斜周期
-    p (float): Power to flatten the maxima (p >= 1).平坦最大功率。
-    
-    Returns:
-    numpy.ndarray: Computed alpha_rad_full values.
-    """
-    cos_term = 1.0 - np.cos(2 * np.pi * tilt_time / tau_STS)
-    normalization = (1.0 - np.cos(np.pi)) ** p
-    return cos_term ** p / normalization
-      
-        
-### IMPORT ###
-dataset = 2 # 0=NIVLAD, 1=PROHEALTH, 2=PROHEALTH_AVERAGE
-standUp_n = 1 # 1, 2 or 3
-
-# Determine if running on Snellius based on hostname
-if "snellius" in platform.node():
-    snellius = 1
-else:
-    snellius = 0
-
-# Dataset path logic
-if dataset == 0:
-    filename  = r"C:\Users\jsande\Documents\UvA\Data\AMC_OneDrive_4-5-2024\Data_NILVAD\NILVAD_preprocessed_data\Preprocessed_PIN43028_T2_SSS.mat"
-    get_data(filename)
-    marker_name = 'markers'
-    markers = np.squeeze(data['data'][marker_name][0][0][0][0])
-    sts0 = markers[0][0][0]; # start (for calibratin of setpoints)
-    sts1 = markers[4][0][0]; # 1st stand-up (for calibratin of setpoints)
-    sts_n = markers[3+standUp_n][0][0]
-    sit_n = markers[standUp_n][0][0]
-    # Add automatic data extraction, done as for PROHEALTH
-
-if dataset == 1:
-    if snellius == 1:
-        # Paths for when running on Snellius
-        filename = "/gpfs/home1/jvandesande/Preprocessed_data/PHI022/Preprocessed_PHI022_FSup.mat"
-        csv_file_path = "/gpfs/home1/jvandesande/Preprocessed_data/PROHEALTH-I_export_olderadults.csv"
-    else:
-        # Paths for when running locally
-        filename = r"C:\Users\jsande\OneDrive - UvA\Documenten\UvA\Data\AMC_OneDrive_4-5-2024\Data validation study PROHEALTH\Preprocessed data\PHI022\Preprocessed_PHI022_FSup.mat"
-        csv_file_path = r"C:\Users\jsande\OneDrive - UvA\Documenten\UvA\Data\AMC_OneDrive_4-5-2024\Data validation study PROHEALTH\PROHEALTH-I_export_olderadults.csv"
-
-    get_data(filename)
-    patient_id = extract_patient_id(filename)
-    
-    # Read the CSV file using the dynamically determined column names
-    try:
-        df = pd.read_csv(
-            csv_file_path,
-            header=0,                # Use the first row as the header
-            na_values=['', 'NA'],    # Treat empty strings and 'NA' as NaN
-            delimiter=';',           # Specify the delimiter
-        )
-    except pd.errors.ParserError as e:
-        print(f"ParserError: {e}")
-    
-    # Find patient with ID
-    #patient_id = 'PHI022'
-    patient_data = df[df['Record Id'] == patient_id]
-    
-    global sts_n_end
-    # Extract the required columns
-    if not patient_data.empty:
-        length = patient_data['length'].values[0]
-        weight = patient_data['weight'].values[0]
-        bmi = patient_data['bmi'].values[0]
-        age = patient_data['Age'].values[0]
-        sex = patient_data['Sex'].values[0]
-        print(f'Length: {length}, Weight: {weight}, BMI: {bmi}, Age: {age}, Sex: {sex}')
-    else:
-        print(f'Patient with ID {patient_id} not found.')
-    marker_name = 'marker'
-    markers = np.squeeze(data['data'][marker_name][0][0][0][0])
-    sts0 = round(markers[6][0][0], 3); # 1st start (for calibration of setpoints)
-    sts1 = round(markers[0][0][0], 3); # 1st stand-up (for calibration of setpoints)
-    sts_n = round(markers[-1+standUp_n][0][0], 3); # 
-    # Set a default value for sts_n_end before assigning from markers
-    sts_n_end = float('nan')  # Initialize to NaN explicitly
-    try:
-        # Try to assign sts_n_end from the data file (it might be NaN or a number)
-        sts_n_end = round(markers[11+standUp_n][0][0], 3)
-    except (IndexError, TypeError):
-        # Handle cases where accessing the markers data fails
-        print("Error accessing markers data, sts_n_end set to NaN")
-    sit_n = round(markers[17+standUp_n][0][0], 3); # 
-    print("sts_n: ", sts_n)
-    print("sts_n_end: ", sts_n_end)
-
-global data_SBP, data_DBP, data_HR, data_BP, data_MAP, data_time, data_time_10Hz
-if dataset == 2:
-    fallers = 0
-    if snellius == 1:
-        # Paths for when running on Snellius
-        csv_SBP = "/gpfs/home1/jvandesande/Preprocessed_data/Populations/mean_data_fallers_non_fallers_SBP.csv"
-        csv_DBP = "/gpfs/home1/jvandesande/Preprocessed_data/Populations/mean_data_fallers_non_fallers_DBP.csv"
-        csv_HR = "/gpfs/home1/jvandesande/Preprocessed_data/Populations/mean_data_fallers_non_fallers_HR.csv"
-    if snellius == 0:
-        # Paths for when running locally
-        csv_SBP = r"D:\CLS\Thesis\Qi_CODE\mean_data_fallers_non_fallers_SBP.csv"
-        csv_DBP = r"D:\CLS\Thesis\Qi_CODE\mean_data_fallers_non_fallers_DBP.csv"
-        csv_HR = r"D:\CLS\Thesis\Qi_CODE\mean_data_fallers_non_fallers_HR.csv"
-    if fallers == 1:
-        data_SBP = pd.read_csv(csv_SBP)['Mean SBP Fallers (mmHg)']
-        data_DBP = pd.read_csv(csv_DBP)['Mean DBP Fallers (mmHg)']
-        data_HR = pd.read_csv(csv_HR)['Mean HR Fallers (bpm)']
-    if fallers == 0:
-        data_SBP = pd.read_csv(csv_SBP)['Mean SBP Non-Fallers (mmHg)']
-        data_DBP = pd.read_csv(csv_DBP)['Mean DBP Non-Fallers (mmHg)']
-        data_HR = pd.read_csv(csv_HR)['Mean HR Non-Fallers (bpm)']
-    data_BP = data_MAP = (1/3)*data_SBP + (2/3)*data_DBP
-    data_time = data_time_10Hz = pd.read_csv(csv_HR)['Time (s)']
-    length = 169 # cm, men and women avg.
-    weight = 78 # kg, men and women avg.
-    sts0 = -120
-    sts1 = 0
-    sts_n = 0
-    sts_n_end = float('nan') # Initialize to NaN explicitly
-    sit_n = 180
-
-#%%
-# =============================================================================
-# Assign the control parameters to set for how long you want to run the simulation
-# =============================================================================
-global resting_time, time_after_sts
-resting_time = 120 # s resting time
-time_buffer = 10 # s, have the simulation run a little longer to complete the cardiac cycle, don't touch this parameter
-tmin=controlPars.tmin
-time_after_sts = sit_n-sts_n
-if time_after_sts > 179.9: # Limit the simulation to 100 seconds ater STS for speed-up, SHOULD REMOVE LATER
-    time_after_sts = 179.9
-tmax = resting_time + time_after_sts + time_buffer; # Here on can set for how long you the simulation want to run in seconds
-#tmax=controlPars.tmax; # Here on can set for how long you the simulation want to run in seconds
-#T=controlPars.T; # Sample frequency
-T=0.01; # Sample frequency
-N = round((tmax-tmin)/T)+1
-#N=controlPars.N; # 
-#t_values = np.linspace(tmin,tmax,int(tmax/T)) # create t-axis with (start point, end point, number of points)
-t_eval = np.arange(tmin,tmax,T) # create t-axis with (start point, end point, delta T)
-
 
 #%%
 # Solve the model
@@ -369,7 +49,7 @@ def solve(scaling):
             """
                 Create impulse responses
             """
-            # 创建副交感神经和交感神经冲动反应函数
+            
             S_GRAN = 0.0625
             SUMZ = 0
             I_length=960
@@ -381,7 +61,7 @@ def solve(scaling):
             cpv=np.zeros(I_length)
             cpa=np.zeros(I_length)
             
-            # Set up parasympathetic impulse response function 副交感神经冲动反应
+            # Set up parasympathetic impulse response function
             start = int(np.round((scaling["baro_delay_para"] + scaling["baro_delay2"] + .59 - 3.0*S_GRAN) / S_GRAN)); #vec[25] // Delay of the parasymp. impulse response
             peak  = int(np.round((scaling["baro_delay_para"] + scaling["baro_delay2"] + .70 - 3.0*S_GRAN) / S_GRAN)); #vec[26] // Peak of the parasymp. impulse response
             end   = int(np.round((scaling["baro_delay_para"] + scaling["baro_delay2"] + 1 - 3.0*S_GRAN) / S_GRAN)); #vec[27] // End of the parasymp. impulse response
@@ -395,7 +75,7 @@ def solve(scaling):
             for i in range(start,end):
                 p[i]=p[i]/(SUMZ)
             
-            # Do the same for the heldtbeta-sympathetic impulse response function. 交感神经冲动反应功能
+            # Do the same for the heldtbeta-sympathetic impulse response function.
             start = int(np.round((scaling["baro_delay_sympa"] + scaling["baro_delay2"] + 2.5 - 3.0*S_GRAN) / S_GRAN)); #vec[28] // Delay of the parasymp. impulse response
             peak  = int(np.round((scaling["baro_delay_sympa"] + scaling["baro_delay2"] + 3.5 - 3.0*S_GRAN) / S_GRAN)); #vec[29] // Peak of the parasymp. impulse response
             end   = int(np.round((scaling["baro_delay_sympa"] + scaling["baro_delay2"] + 15 - 3.0*S_GRAN) / S_GRAN)); #vec[30] // End of the parasymp. impulse response
@@ -409,7 +89,7 @@ def solve(scaling):
             for i in range(start,end):
                 s[i]=s[i]/(SUMZ)
                         
-            # Do the same for the venous alpha-sympathetic impulse response function. 静脉α-交感神经脉冲反应
+            # Do the same for the venous alpha-sympathetic impulse response function.
             start = int(np.round((scaling["baro_delay_BR_R"] + scaling["baro_delay2"] + 5 - 3.0*S_GRAN) / S_GRAN)); #vec[112] // Delay of the alpha-sympathetic impulse response
             peak  = int(np.round((scaling["baro_delay_BR_R"] + scaling["baro_delay2"] + 10 - 3.0*S_GRAN) / S_GRAN)); #vec[113] // Peak of the alpha-sympathetic impulse response
             end   = int(np.round((scaling["baro_delay_BR_R"] + scaling["baro_delay2"] + 42 - 3.0*S_GRAN) / S_GRAN)); #vec[114] // End of the alpha-sympathetic impulse response
@@ -423,7 +103,7 @@ def solve(scaling):
             for i in range(start,end):
                 v[i]=v[i]/(SUMZ)
                                 
-            # Do the same for the arterial alpha-sympathetic impulse response function. 动脉α-交感神经脉冲反应
+            # Do the same for the arterial alpha-sympathetic impulse response function.
             start = int(np.round((scaling["baro_delay_BR_UV"] + scaling["baro_delay2"] + 2.5 - 3.0*S_GRAN) / S_GRAN)); #vec[115] // Delay  impulse response
             peak  = int(np.round((scaling["baro_delay_BR_UV"] + scaling["baro_delay2"] + 3.5 - 3.0*S_GRAN) / S_GRAN)); #vec[116] // Peak  impulse response
             end   = int(np.round((scaling["baro_delay_BR_UV"] + scaling["baro_delay2"] + 30 - 3.0*S_GRAN) / S_GRAN)); #vec[117] // End impulse response
@@ -437,7 +117,7 @@ def solve(scaling):
             for i in range(start,end):
                 a[i]=a[i]/(SUMZ)
                                 
-            # Do the same for the cardiopulmonary to venous tone alpha-sympathetic impulse response function. 心肺静脉张力α交感神经脉冲反应
+            # Do the same for the cardiopulmonary to venous tone alpha-sympathetic impulse response function.
             start = int(np.round((scaling["baro_delay_CP_UV"] + scaling["baro_delay2"] + 5 - 3.0*S_GRAN) / S_GRAN)); #vec[147] // Delay to veins impulse response
             peak  = int(np.round((scaling["baro_delay_CP_UV"] + scaling["baro_delay2"] + 9 - 3.0*S_GRAN) / S_GRAN)); #vec[148] // Peak to veins impulse response
             end   = int(np.round((scaling["baro_delay_CP_UV"] + scaling["baro_delay2"] + 40 - 3.0*S_GRAN) / S_GRAN)); #vec[149] // End to veins impulse response
@@ -451,7 +131,7 @@ def solve(scaling):
             for i in range(start,end):
                 cpv[i]=cpv[i]/(SUMZ)
                                 
-            # Do the same for the cardiopulmonary to arterial resistance alpha-sympathetic impulse response function. 心肺动脉张力α交感神经脉冲反应功能
+            # Do the same for the cardiopulmonary to arterial resistance alpha-sympathetic impulse response function.
             start = int(np.round((scaling["baro_delay_CP_R"] + scaling["baro_delay2"] + 2.5 - 3.0*S_GRAN) / S_GRAN)); #vec[150] // Delay to arteries impulse response
             peak  = int(np.round((scaling["baro_delay_CP_R"] + scaling["baro_delay2"] + 5.5 - 3.0*S_GRAN) / S_GRAN)); #vec[151] // Peak to arteries impulse response
             end   = int(np.round((scaling["baro_delay_CP_R"] + scaling["baro_delay2"] + 35 - 3.0*S_GRAN) / S_GRAN)); #vec[152] // End to arteries impulse response
@@ -579,7 +259,6 @@ def solve(scaling):
             "---------------------------- initial flows ----------------------------------------"
 
             # Table 3. Basal values of flows related to the jugular-vertebral circuit (supine condition)
-            # 与颈静脉-椎静脉环路相关的血流基础值（仰卧状态）
 
             Q_car = 12.5 # ml/s
             Q = 12.5 # ml/s
@@ -606,7 +285,6 @@ def solve(scaling):
             "----------------------------------------- capacities ----------------------------------------------------"
 
             # capacities related to the jugular-vertrebral circuit (supine condition) Table 4
-            # 与颈椎静脉环路相关的容量（仰卧位）
 
             C_vs = 0.5 # ml/mmHg
             C_jr3 =  1.0 # ml/mmHg
@@ -627,7 +305,6 @@ def solve(scaling):
             "-------------------------------------------------------------------------------------------------------------"
 
             # values associated to posteriori information mentioned in text (last paragraph of assignment of basal parameters)
-            # 文中提到的后验信息相关的值（基础参数分配的最后一段）
             A = 0.8
             k_jr3 = 11.0
             k_jr2 = 13.0
@@ -637,10 +314,9 @@ def solve(scaling):
             k_jl1 = 6.9
 
             "-------------------------------------------------------------------------------------------------------------"
-            #软脑膜小动脉与颅内压之间的压力差
+
             P_paP_ic = P_pa_initial - P_ic # difference in pressure between pial arterioles and intracranial pressure (used to gain an initial value)
-            
-            # 静脉压与颅内压之间的压力差
+
             P_vP_ic = P_v - P_ic # difference in pressure between venous pressure and intracranial pressure 
 
             # lengths of segments
@@ -651,7 +327,7 @@ def solve(scaling):
 
             "------------------------------------conductance calculations------------------------------------------"
 
-            # vessel conductances (calculated using pressure-flow relationships)血管电导
+            # vessel conductances (calculated using pressure-flow relationships)
 
             G_cjr3 = Q_cjr3/(P_c3 - P_jr3)
             G_cjr2 = Q_cjr2/(P_c2 - P_jr2)
@@ -784,7 +460,7 @@ def solve(scaling):
             P_svc_reqlist = []
             Q_out_netlist = []
             #Qbrain_buffer=np.full(int(reflexPars.S_INT/controlPars.T),Q_n);
-            # thrombotic events 血栓
+            # thrombotic events
             i_condition =0
             clot_formation =  0 # set this to 1 to enable thrombotic events to occur
             #i = 0 # i is defining different conditions for plot generation (simulating 0 conductances in vessels)
@@ -808,7 +484,7 @@ def solve(scaling):
         crb.P_a_n = reflexPars.ABP_setp
     
     # =============================================================================
-    # Interventions干预措施
+    # Interventions
     # =============================================================================
     sit_index_10Hz = find_index_of_time(data_time_10Hz, round(sts0, 1))
     stand_index_10Hz = find_index_of_time(data_time_10Hz, round(sts1, 1))
@@ -843,7 +519,7 @@ def solve(scaling):
     
     #P_intra_t0=controlPars.P_intra_t0;
     P_intra_t0=-4
-    rrp=60/controlPars.RR; # Respiratory rate period 呼吸频率周期
+    rrp=60/controlPars.RR; # Respiratory rate period
     #rrp=0
     P_sts = 15 * scaling["STS_pressure"] # mmHg
     #P_sts = 43 * scaling["STS_pressure"] # mmHg Source?
@@ -853,10 +529,7 @@ def solve(scaling):
     Itous transient increase of intra-abdominal pressure (43 mmHg +- 22% on
     average in young adults) (Tanaka et al., 1996) and abrupt rise (about 10
     mmHg) of right atrial pressure resulting in an increase in right ventricular
-    filling and therefore CO (Sprangers et al., 1991b).
-    从仰卧姿势站起总是伴随着腿部和腹部肌肉的(不自主的)收缩,腹内压会急剧升高,
-    右心房压力也会急剧上升(约 10 毫米汞柱),导致右心室充盈增加，从而导致 CO 增加.
-    """
+    filling and therefore CO (Sprangers et al., 1991b)."""
 
     #P_sts_legs = 30 * scaling["STS_pressure"] # mmHg Arnoldi -> young person
     #P_sts_abdom = 43 * scaling["STS_pressure"] # mmHg Arnoldi -> young person
@@ -880,7 +553,7 @@ def solve(scaling):
     controlPars.H = length/100
     H = controlPars.H
     controlPars.tbv = 70/(np.sqrt((BW/(22*H**2)))) * BW # Lemmens-Bernstein-Brodsky Equation
-    TBV=controlPars.tbv*scaling["v_ratio"] # 计算总血容量
+    TBV=controlPars.tbv*scaling["v_ratio"]
     #TBV=controlPars.tbv
     
     # Nadler eq.:
@@ -939,7 +612,7 @@ def solve(scaling):
     inputs[3:5] = inputs[8] = inputs[10] = inputs[12:15] = inputs[18] = scaling["E_veins"]
     subjectPars.elastance=np.array(subjectPars.elastance)*inputs[0:22] # heart elastanceses are included,
 
-    ### Unstressed volume 无应力体积###
+    ### Unstressed volume ###
     #subjectPars.uvolume=np.array(subjectPars.uvolume)*scaling["Global_UV"]
     subjectPars.uvolume=np.array(subjectPars.uvolume) * scaling["Global_UV"]
 
@@ -994,12 +667,12 @@ def solve(scaling):
     HP_max = 0.2 # maximal heart period
 
     ### IMPULSE FACTORS ###
-    # More setpoints反射参数
-    reflexPars.RAP_setp = 3 * scaling["RAP_setp"] # vec[15] -> some influence 右心房压力
+    # More setpoints
+    reflexPars.RAP_setp = 3 * scaling["RAP_setp"] # vec[15] -> some influence
     reflexPars.ABRsc = 18 # vec[1] -> little influence
     reflexPars.RAPsc = 5  # vec[16] -> very little influence
 
-    # Impulse responses 压力感受器 压力(p)，
+    # Impulse responses
     reflexPars.p = reflexPars.p
     reflexPars.s = reflexPars.s
     reflexPars.a = reflexPars.a
@@ -1007,7 +680,7 @@ def solve(scaling):
     reflexPars.cpv = reflexPars.cpv
     reflexPars.cpa = reflexPars.cpa
     
-    # Gains 心率调节的增益 (RRsgain、RRpgain) 和心率调节的时间常数 (beta、alpha)
+    # Gains
     reflexPars.RRsgain = reflexPars.RRsgain * scaling["RRsgain"] # vec[2]
     reflexPars.RRpgain = reflexPars.RRpgain * scaling["RRpgain"] # vec[3]
     #reflexPars.rr_sym = reflexPars.rr_sym #vec[2] // beta -> not used
@@ -1022,9 +695,7 @@ def solve(scaling):
     """
     Assign the parameters
     """
-    #CARDIAC CYCLE TIMER AND COUTER INITIALIZATIONS心动周期计时器和计数器初始化
-    # 心动周期的开始时间 (t_cc_onset)、心动周期的开关 (cc_switch)、呼吸功能的开始时间 (t_rf_onset)、
-    # 索引检查器 (idx_check) 和呼吸的开始时间 (t_resp_onset)
+    #CARDIAC CYCLE TIMER AND COUTER INITIALIZATIONS
     global t_cc_onset, cc_switch, t_rf_onset, idx_check, t_resp_onset
     t_cc_onset = np.array([0.0])
     cc_switch = 0
@@ -1037,7 +708,6 @@ def solve(scaling):
     """
     global V, P, F, Pgrav, E, R, UV, vl
     # The value below are not stored every moment, only the most recent one.
-    # 体积 (V)、压力 (P)、流量 (F)、重力压力 (Pgrav)、弹性 (E)、阻力 (R)、无应力体积 (UV) 和血管长度 (vl)
     V=np.zeros((22)) # number of compartments+1, this 21+1=22 (+ V_micro);
     P=np.zeros((22))
     F=np.zeros((24))
@@ -1056,7 +726,7 @@ def solve(scaling):
     store_t=[0.0]
     store_BP_min=[]
     store_BP_max=[]
-    store_finap=[] # 手指动脉压
+    store_finap=[]
     store_P = np.zeros((22, len(t_eval)))
     store_HR = np.zeros(len(t_eval))
     store_P_muscle = np.zeros(len(t_eval))
@@ -1083,7 +753,7 @@ def solve(scaling):
         crb.Qbrain_buffer = np.full(int(crb_buffer_size/T), crb.Q_n)
 
     global abp_buffer, rap_buffer, abp_ma, abp_pp, rap_ma, abp_hist, rap_hist, abp_hist, rap_hist, pp_hist, baro_buffer
-    #initilize the arrays needed for the relfexes 动脉血压 (abp_buffer) 和右心房压力 (rap_buffer) 的缓冲区
+    #initilize the arrays needed for the relfexes
     abp_buffer=np.full(int(reflexPars.S_GRAN/T), reflexPars.ABP_setp) # NEW: I changed this back to S_GRAN. OLD: I artifically increased the buffer time, to get at least one heart beat. Becuase baroreceptor sense MAP not SYS.
     rap_buffer=np.full(int(reflexPars.S_GRAN/T), reflexPars.RAP_setp)
     abp_ma=np.full(baro_buffer, reflexPars.ABP_setp) # Heldt uses 3*S_GRAN: 2*S_GRAN convolution and 1*S_GRAN lin_interpolation
@@ -1095,10 +765,6 @@ def solve(scaling):
     beta_resp, para_resp, alpha_resp, alpha_respv, alphav_resp, alphav_respv = 0,0,0,0,0,0
     
     def impulseFunction(abp_buffer,rap_buffer):
-        '''
-        This function calculates the impulse response of the baroreflex system. 
-        The function is called every time step, used to adjust the heart rate and resistance of the vessels.
-        '''
         global abp_hist,pp_hist, rap_hist, para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv, s_abp, abp_ma,rap_ma,s_rap,abp_pp,pp_abp
         global para_resp_old, beta_resp_old, alpha_resp_old, alpha_respv_old, alphav_resp_old, alphav_respv_old
         global para_resp_new, beta_resp_new, alpha_resp_new, alpha_respv_new, alphav_resp_new, alphav_respv_new
@@ -1129,13 +795,6 @@ def solve(scaling):
         alphav_respv_new=np.sum(np.flip(rap_hist,0)* reflexPars.cpv)
     
     def ABRreflexDef():
-        '''
-        The function f calculates the cardiac period (HP) based on the current heart rate (HR) 
-        and the reflex response. It ensures that the cardiac period remains within defined limits 
-        and adjusts the contractility of the ventricles (ErvMAX, ElvMAX) based on the reflex response.
-        根据当前心率 (HR) 和反射响应计算心动周期 (HP)。它确保心动周期保持在定义的限制范围内，
-        并根据反射响应调整心室的收缩力 (ErvMAX、ElvMAX)通过调节心率和收缩力来调节血压
-        '''
         global HP, HR, ErvMAX, ElvMAX
         if HR==0:
             HP=0
@@ -1159,11 +818,6 @@ def solve(scaling):
         return ErvMAX, ElvMAX, HP
     
     def CPRreflexDef():
-        '''
-        Adjusts vascular resistance and unstressed volume in various compartments based on reflex responses. 
-        It ensures that resistance values remain within the appropriate range and updates the 
-        unstressed volume of veins in different body parts
-        '''
         # Upper body compartment
         R[0,3] = subjectPars.resistance[0,3] + gain3*alpha_resp + gain4*alphav_resp #  vec[4]=-.13  vec[17]=-0.3
         # R kidney compartment
@@ -1256,10 +910,6 @@ def solve(scaling):
         Start the simulation
     """
     def esse_cerebral_NEW(t, x_esse):
-        '''
-        The simulation state is updated at each time step. 
-        It uses global variables to track various physiological parameters
-        '''
         global nrr, ncc, nrf, n, n4, HP, V_micro, ElvMIN, ErvMIN, ErvMAX, ElvMAX
         global abp_buffer, rap_buffer, abp_ma, abp_pp, rap_ma, abp_hist, rap_hist, abp_hist, rap_hist, pp_hist
         global V, P, F, Pgrav, E, R, UV, vl, t_temp, cvp_temp, co_temp, hr_temp, store_finap_temp
@@ -1271,14 +921,13 @@ def solve(scaling):
         V = x_esse[:22]  # Volumes of cardiovascular model
         V_micro = V[-1] # V_micro
         if cerebralModelOn==1:
-            # 自动调节、大脑静脉压力、软脑膜小动脉、颅内压以及颈静脉和侧支网络各个部分的压力
             crb.x_aut = x_esse[22] # autoregulation
             crb.P_vP_ic = x_esse[23] # pressure of cerebal veins vi from equation (5)
             crb.P_paP_ic = x_esse[24] # pressure of pial arterioles from equation (3)
             crb.P_ic = x_esse[25] # intracranial pressure from equation (15)
             crb.P_vs = x_esse[26] # cerebral sinus veins pressure
-            if carotidOn==1: #颈动脉模型
-                crb.P_car = x_esse[27] # carotid artery pressure 颈静脉压力
+            if carotidOn==1:
+                crb.P_car = x_esse[27] # carotid artery pressure
             if cerebralVeinsOn==1:
                 crb.P_jr3 = x_esse[27+carotidOn] # 3rd segment of the right jugular vein pressure
                 crb.P_jl3 = x_esse[28+carotidOn] # 3rd segment of the left jugular vein pressure
@@ -1310,10 +959,9 @@ def solve(scaling):
             t_rf_onset = t # New onset time reflex function
             t_rf = 0 # New time in new reflex function
             rf_switch = 1 # Reflex function switch ON
-            # create impulse response 根据动脉和右心房压力缓冲区创建脉冲响应
+            # create impulse response
             impulseFunction(abp_buffer,rap_buffer)
 
-        # 更新心动周期、收缩力、阻力和无应力体积。
         if t>=4*reflexPars.S_GRAN: # Linear interpolation between impulse activations
             if ABRreflexOn==1:
                 para_resp = (para_resp_new-para_resp_old)*t_rf/reflexPars.S_GRAN+para_resp_old
@@ -1336,7 +984,7 @@ def solve(scaling):
             Tav = K_av*np.sqrt(HP)
             Tsa = K_sa*np.sqrt(HP)
             Tsv = K_sv*np.sqrt(HP)
-        # Atria 心房
+        # Atria
         if t_cc <= Tsa and t_cc >=0:
             E[19] = 0.5*(ElaMAX-ElaMIN)*(1-np.cos(np.pi*t_cc/Tsa))+ElaMIN
             E[15] = 0.5*(EraMAX-EraMIN)*(1-np.cos(np.pi*t_cc/Tsa))+EraMIN
@@ -1346,7 +994,7 @@ def solve(scaling):
         else:
             E[19] =ElaMIN
             E[15] =EraMIN
-        # Ventricle 心室
+        # Ventricle
         if t_cc < Tav:
             E[20] =ElvMIN
             E[16] =ErvMIN
@@ -1401,7 +1049,7 @@ def solve(scaling):
                 P_muscle_thorax = P_sts_thorax * alpha_rad_full
 
 
-        """ Respiratory pattern + influence of gravity on this pressure 呼吸模式 + 重力对该压力的影响"""
+        """ Respiratory pattern + influence of gravity on this pressure """
         t_resp = t - t_resp_onset # Time in respiratory cycle
         if t_resp > RRP: # If 1 RRP has past:
             t_resp_onset = t
@@ -1451,7 +1099,6 @@ def solve(scaling):
             
             "-------------------------------intracranial equations-----------------------------------------------"
             """
-            脑血流和颅内动力学相关的各种参数和方程
             #if len(crb.Qbrain_buffer) > int(2000): # Cerebral
             #    crb.Q_auto = np.mean(crb.Qbrain_buffer[-2000:])
                 #print("AAN")
@@ -1470,7 +1117,7 @@ def solve(scaling):
 
             # calculate autoregulation
             #crb.x_aut += crb.dx_autdt*crb.dt 
-            # conditions for vasoconstriction/vasodilation 血管收缩/扩张条件
+            # conditions for vasoconstriction/vasodilation
             if crb.x_aut <= 0.0: # vasodilation, added OR EQUALS
                 crb.DeltaC_pa = crb.DeltaC_pa1
                 crb.kC_pa = crb.DeltaC_pa1/4.0
@@ -1478,55 +1125,54 @@ def solve(scaling):
                 crb.DeltaC_pa = crb.DeltaC_pa2
                 crb.kC_pa = crb.DeltaC_pa2/4.0
                 
-            # calculate intranical capacity 颅内容量
+            # calculate intranical capacity
             crb.C_ic = 1.0/(crb.k_E*crb.P_ic)
             
-            # calculate cerebral veins vi capacity from equation (6) 脑静脉容量
+            # calculate cerebral veins vi capacity from equation (6)
             crb.C_vi = 1.0/(crb.k_ven*(crb.P_v - crb.P_ic - crb.P_v1))
             
-            # calculate pial arteries capacity from equation (8) 脑膜动脉容量
+            # calculate pial arteries capacity from equation (8)
             crb.C_pa = (crb.C_pan-crb.DeltaC_pa/2.0 + (crb.C_pan + crb.DeltaC_pa/2.0)*np.exp(-crb.x_aut/crb.kC_pa))/(1.0+np.exp(-crb.x_aut/crb.kC_pa))
 
             # Formula uses dx_autdt from the previous timestep, but x_aut from the current timestep, is this correct?
             crb.dC_padt = (-crb.DeltaC_pa*crb.dx_autdt)/(crb.kC_pa*(1+np.exp(-crb.x_aut/crb.kC_pa)))
             
-            # calculate pial arterial resistance from equation (11) 脑膜动脉电阻
+            # calculate pial arterial resistance from equation (11)
             crb.R_pa = crb.k_R*crb.C_pan**2/(((crb.P_pa-crb.P_ic)*crb.C_pa)**2)
             
-            # calculate capillary pressure from equation (4) 毛细血管压力
+            # calculate capillary pressure from equation (4)
             crb.P_c = (crb.P_v/crb.R_pv + crb.P_pa/(crb.R_pa/2.0) + 
                     crb.P_ic/crb.R_f)/(1.0/crb.R_pv + 1.0/(crb.R_pa/2.0) + 1.0/crb.R_f)
 
             
             "------------------------------------intracranial flows and further pressures---------------------------------"
             
-            # calculate CSF formation rate from equation (12) 脑脊液形成率
+            # calculate CSF formation rate from equation (12)
             if crb.P_c>crb.P_ic:
                 crb.Q_f = (crb.P_c - crb.P_ic)/crb.R_f 
             else: 
                 crb.Q_f = 0.0
                 
-            # calculate CSF outflow rate from equation (13) 脑脊液流出率
+            # calculate CSF outflow rate from equation (13)
             if crb.P_ic>crb.P_vs:
                 crb.Q_0 = (crb.P_ic - crb.P_vs)/crb.R_0
             else: 
                 crb.Q_0 = 0.0
             
-            # calculate resistance of the terminal intracranial veins R_vs 终末颅内静脉电阻
+            # calculate resistance of the terminal intracranial veins R_vs
             if crb.P_v>crb.P_vs:
                 crb.R_vs = (crb.P_v - crb.P_vs)/(crb.P_v - crb.P_ic)*crb.R_vs1
             else: 
                 crb.R_vs = crb.R_vs1
                 
-            # calculating the conductance of the terminal intracranial veins 终末颅内静脉导电性
+            # calculating the conductance of the terminal intracranial veins
             crb.G_vs = 1.0/crb.R_vs
 
             # differential equation describing pressure of cerebal veins vi from equation (5)
-            # 脑静脉压力变化率
             crb.dP_vP_icdt = 1.0/crb.C_vi*((crb.P_c - crb.P_v)/crb.R_pv - (crb.P_v - crb.P_vs)/crb.R_vs)
 
             # NEW
-            if carotidOn==1: # 颈动脉
+            if carotidOn==1:
                 # differential equation pressure of pial arterioles from equation (3)   
                 crb.dP_cardt = 1/crb.C_car*( (P[1] - crb.P_car)/crb.R_car - (crb.P_car - crb.P_pa)/(crb.R_la + (crb.R_pa/2)))
                 crb.dP_paP_icreduceddt = 1/crb.C_pa*((crb.P_car - crb.P_pa)/(crb.R_la + (crb.R_pa/2)) - (crb.P_pa - crb.P_c)/(crb.R_pa/2) - crb.dC_padt*(crb.P_pa - crb.P_ic))
@@ -1542,7 +1188,7 @@ def solve(scaling):
                     detla_P_car_ic = 0.0001
                 crb.r_mca = crb.r_mca_n * (np.log((detla_P_car_ic) / (crb.P_a_n - crb.P_ic_n)) / crb.k_mca + 1) # new
 
-            if carotidOn==0: 
+            if carotidOn==0:
                 # differential equation pressure of pial arterioles from equation (3)   
                 crb.dP_paP_icreduceddt = 1/crb.C_pa*((P[1] - crb.P_pa)/(crb.R_la + (crb.R_pa/2)) - (crb.P_pa - crb.P_c)/(crb.R_pa/2)- crb.dC_padt*(crb.P_pa-crb.P_ic))
                 crb.Q_la = (P[1] - crb.P_pa - Pgrav[21])/(crb.R_la + crb.R_pa/2)
@@ -1572,7 +1218,7 @@ def solve(scaling):
             # calculating flow in the venous sinus
             crb.Q_vs = crb.G_vs*(crb.P_v - crb.P_vs)
 
-            if cerebralVeinsOn==0: # 颈静脉
+            if cerebralVeinsOn==0:
 
                 crb.Q_svc = crb.G_svc * (crb.P_vs - P[4]) # new
 
@@ -1648,7 +1294,7 @@ def solve(scaling):
                 #crb.Q_svc2 = (crb.P_svc1-P[4])*crb.G_svc2
 
                 "-------------------------------jugular-vertebral circuit equations-----------------------------------------------"
-                # 颈静脉-椎静脉回路方程
+                
                 # differential equation for venous sinus pressures
                 crb.dP_vsdt = 1.0/crb.C_vs*((crb.P_v - crb.P_vs)*crb.G_vs - (crb.P_vs - crb.P_ic)*crb.G_0 - (crb.P_vs-crb.P_jr3)*crb.G_jr3 -
                                             (crb.P_vs - crb.P_jl3)*crb.G_jl3 - (crb.P_vs - crb.P_c3)*crb.G_c3 - (crb.P_vs - crb.P_vv)*crb.G_vvr - (crb.P_vs - crb.P_vv)*crb.G_vvl)
@@ -2146,1084 +1792,3 @@ def run_solve2():
     t_solver, y_solver = Out_solver
         
     return
-#%%
-# PLOT
-
-def plot():
-    global time_after_sts, delta_t, data_time_10Hz, data_MAP, data_HR
-    #IMPORT
-    if dataset != 2:
-        data_time_10Hz = np.squeeze(data['data']['time_10Hz'][0][0])
-        data_MAP = np.squeeze(data['data']['map'][0][0])
-        data_HR = np.squeeze(data['data']['hr'][0][0])
-    
-    # magic with indices and time for allignment
-    if time_after_sts > 179.9:
-        time_after_sts = 179.9
-    global dt_data, index_end, index_start, x_data, start_index_model
-    dt_data = round(data_time_10Hz[1]-data_time_10Hz[0],1)
-    start_index_model = int(resting_time/2/dt_data)
-    index_end = int((time_after_sts+resting_time)/dt_data)
-    
-    index_data_begin = find_index_of_time(data_time_10Hz, round(sts_n,1))-start_index_model
-    index_data_end = index_data_begin+index_end-start_index_model
-    x_data = data_MAP[index_data_begin:index_data_end]
-    
-    t_translated = t_mean + sts_n - resting_time
-    t_eval_trans = t_eval + sts_n - resting_time
-    #t_translated2 = t + sts_n - resting_time
-    
-    # INTERPOLATE FINAP #
-    # Desired sampling frequency
-    desired_frequency = 10  # Hz
-    desired_interval = 1 / desired_frequency  # Interval in seconds
-    
-    # Sys and Dia
-    new_times, new_minP = lin_interp(t_mean, store_BP_min, desired_interval)
-    new_times, new_maxP = lin_interp(t_mean, store_BP_max, desired_interval)
-    t_translated_new = (new_times + sts_n - resting_time)
-    window_t_trans = t_translated_new[start_index_model:index_end]
-    window_new_minP = new_minP[start_index_model:index_end]
-    window_new_maxP = new_maxP[start_index_model:index_end]
-    
-    # Set default font size for all plots
-    plt.rcParams['font.size'] = 15  # Replace 14 with your desired font size
-
-    # Plotting
-    plt.figure(figsize=(10, 6), dpi=300)
-    plt.plot(window_t_trans, window_new_minP, label=r'$Model_{dia}$', color='navy')
-    plt.plot(window_t_trans, window_new_maxP, label=r'$Model_{sys}$', color='darkred')
-    plt.plot(data_time_10Hz[index_data_begin:index_data_end], data_DBP[index_data_begin:index_data_end], label=r'$Data_{dia}$', color='cornflowerblue', ls="--")
-    plt.plot(data_time_10Hz[index_data_begin:index_data_end], data_SBP[index_data_begin:index_data_end], label=r'$Data_{sys}$', color='lightcoral', ls="--")
-    plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('$t$ (s)')
-    plt.ylabel(r'$P$ (mmHg)')
-    plt.title(r'Plot of systolic and diastolic $P$ vs time')
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.show()
-    
-    # HR 1
-    lip_HR = lin_interp(t_mean, HR_list, desired_interval)[1][start_index_model:index_end]
-    plt.figure(figsize=(10, 6), dpi=300)
-    plt.plot(data_time_10Hz[index_data_begin:index_data_end], data_HR[index_data_begin:index_data_end], label=r'$HR_{data}$', color='cornflowerblue', ls="--")
-    plt.plot(t_translated_new[start_index_model:index_end], lip_HR, label=r'$HR_{model}$', color='navy', linestyle="-")
-    plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('$t$ (s)')
-    plt.ylabel(r'$HR$ ($min^{-1}$)')
-    plt.title(r'Plot of heart rate ($HR$) vs time ($t$)')
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.show()
-
-    if cerebralModelOn==1:
-        ### CRB PLOTS ###
-        global t_trans_mca
-        t_trans_mca = tmean_mca + sts_n - resting_time
-        names_store_crb_Q_ic = ['$Q_{f}$', '$Q_{0}$', '$Q_{la}$', '$Q_{vs}$', '$Q_{auto}$', '$Q_{pa}$']
-        """ store_crb_Q_ic:
-        Q_f:    Cerebrospinal fluid formation rate
-        Q_0:    Cerebrospinal fluid outflow rate
-        Q_la:   Flow in the large cerebral arteries
-        Q_vs:   Venous sinus flow
-        Q_auto: average cerebral flow over crb_buffer_size [s]: np.mean(crb.Qbrain_buffer)
-        Q_pa:   Flow in the pial arterioles
-        """
-
-        """
-        # crb Q (Cerebral blood flow)
-        plt.figure(figsize=(10, 6))
-        plt.plot(t_eval_trans, store_crb[0], label=r'$Qcrb_{model}$', color='blue', linewidth=0.2, linestyle="-")
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-        plt.title(r'Plot of cerebral blood flow ($Q$) vs time ($t$)')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-        
-        # crb Q (Cerebral blood flow) 2
-        plt.figure(figsize=(10, 6))
-        plt.plot(t_eval_trans[9000:12000], store_crb[0, 9000:12000], label=r'$Qcrb_{model}$', color='blue', linewidth=0.4, linestyle="-")
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-        plt.title(r'Plot of cerebral blood flow ($Q$) vs time ($t$)')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-
-        # Plot P_c3 upper segment of the collateral network
-        plt.figure(figsize=(10, 6))
-        plt.plot(t_eval_trans[9000:12000], y_solver[31][9000:12000], label=r'$P_{C3}$', color='b', linewidth=0.3)
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$P$ (mmHg)')
-        plt.title(r'Plot of pressure ($P$) in upper segment of the collateral network vs time')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-        
-        # Plot cerebral veins pressure
-        plt.figure(figsize=(10, 6))
-        plt.plot(t_eval_trans[9000:12000], y_solver[23][9000:12000], label=r'$P_{v}P_{ic}$', color='b', linewidth=0.3)
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$P$ (mmHg)')
-        plt.title(r'Plot of pressure ($P$) in the cerebal veins vs time')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-        
-        # Plot pressure of pial arterioles
-        plt.figure(figsize=(10, 6))
-        plt.plot(t_eval_trans[9000:12000], y_solver[24][9000:12000], label=r'$P_{v}P_{ic}$', color='b', linewidth=0.3)
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$P$ (mmHg)')
-        plt.title(r'Plot of pressure ($P$) in the pial arterioles vs time')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-
-
-        # crb Q (Cerebral blood flow all times)
-        plt.figure(figsize=(10, 6), dpi=300)
-        # Loop through each row in the matrix
-        for i in range(len(store_crb_Q_ic)):
-            plt.plot(t_eval_trans, store_crb_Q_ic[i, :], label=names_store_crb_Q_ic[i], linewidth=0.5, linestyle="-")
-        # Add vertical line at specific time points (sts_n)
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-        plt.title(r'Plot of intracranial blood flow vs time ($t$)')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-        
-        # crb Q (Cerebral blood flow 1, zoomed in)
-        plt.figure(figsize=(10, 6), dpi=300)
-        # Loop through each row in the matrix
-        for i in range(len(store_crb_Q_ic)):
-            plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[i, 9000:12000], label=names_store_crb_Q_ic[i], linewidth=0.5, linestyle="-")
-        # Add vertical line at specific time points (sts_n)
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-        plt.title(r'Plot of intracranial blood flow vs time ($t$)')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-        
-        # crb Q (Cerebral ic flow 2, further zoomed in)
-        plt.figure(figsize=(10, 6), dpi=300)
-        plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[0, 9000:12000], label=names_store_crb_Q_ic[0], linewidth=0.5, linestyle="-")
-        plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[1, 9000:12000], label=names_store_crb_Q_ic[1], linewidth=0.5, linestyle="-")
-        # Add vertical line at specific time points (sts_n)
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-        plt.title(r'Plot of intracranial blood flow vs time ($t$)')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-        """
-        # crb Q (Cerebral inflow)
-        plt.figure(figsize=(10, 6), dpi=300)
-        plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[5, 9000:12000], label=names_store_crb_Q_ic[5], linewidth=0.5, linestyle="-")
-        plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[2, 9000:12000], label=names_store_crb_Q_ic[2], linewidth=0.5, linestyle="-")
-        # Add vertical line at specific time points (sts_n)
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-        plt.title(r'Plot of cerebral inflow vs time ($t$)')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-
-        # crb MCA (Middle cerebral artery) velocity
-        plt.figure(figsize=(10, 6), dpi=300)
-        plt.plot(t_eval_trans[9000:12000], store_crb_mca[0, 9000:12000], label=r'$V_{MCA}$', color='navy', linewidth=0.5, linestyle="-")
-        plt.plot(t_trans_mca, store_V_mca_max, label=r'$V_{MCA_{sys}}$', color='lightcoral', linestyle='--')
-        plt.plot(t_trans_mca, store_V_mca_min, label=r'$V_{MCA_{dia}}$', color='cornflowerblue', linestyle='--')
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$V$ ($cm \times s^{-1}$)')
-        plt.title(r'Plot of middle cerebral artery velocity ($V_{MCA}$) vs time')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-
-        # crb MCA (Middle cerebral artery) velocity
-        plt.figure(figsize=(10, 6), dpi=300)
-        plt.plot(t_eval_trans[9000:12000], store_crb_mca[0, 9000:12000], label=r'$V_{MCA}$', color='navy', linewidth=0.5, linestyle="-")
-        plt.plot(t_trans_mca[60:170], store_V_mca_max[60:170], label=r'$V_{MCA_{sys}}$', color='lightcoral', linestyle='--')
-        plt.plot(t_trans_mca[60:170], store_V_mca_min[60:170], label=r'$V_{MCA_{dia}}$', color='cornflowerblue', linestyle='--')
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$V$ ($cm \times s^{-1}$)')
-        plt.title(r'Plot of middle cerebral artery velocity ($V_{MCA}$) vs time')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-
-        # crb MCA (Middle cerebral artery) radius
-        plt.figure(figsize=(10, 6), dpi=300)
-        plt.plot(t_eval_trans[9000:12000], store_crb_mca[1, 9000:12000], label=r'$V_{MCA}$', color='b', linewidth=0.5, linestyle="-")
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$r$ ($cm$)')
-        plt.title(r'Plot of middle cerebral artery radius ($r_{MCA}$) vs time')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-
-        if carotidOn==1:
-            # plot carotid pressure
-            plt.figure(figsize=(10, 6), dpi=300)
-            plt.plot((t_solver + sts_n - resting_time), y_solver[27], label=r'$P_{carotid}$', color='#1f77b4', linewidth=1)  # Soft blue
-            plt.plot((t_solver + sts_n - resting_time), y_solver[24]+y_solver[25], label=r'$P_{PA}$', color='#2ca02c', linewidth=1)  # Soft green
-            plt.axvline(x=sts_n, color='gray', linestyle='--', label=r'$t_0$')
-            plt.xlabel('t (s)')
-            plt.ylabel(r'$P$ (mmHg)')
-            plt.title(r'Plot of carotid pressure ($P_{carotid}$) vs time')
-            plt.legend(loc='upper left')
-            plt.grid(True)
-            plt.show()
-
-        
-
-    """
-    # Delta T vs T
-    def calculate_T(time_series):
-        
-        #Calculate the difference between consecutive time steps.
-        
-        #Parameters:
-        #time_series (list): A list of time points (sorted in ascending order)
-        
-        #Returns:
-        #list: A list of delta t values
-        
-        T = [time_series[i] - time_series[i - 1] for i in range(1, len(time_series))]
-        return T
-    
-    T = calculate_T(t)
-    
-    # Plotting t vs delta t
-    plt.figure(figsize=(10, 6))
-    plt.plot(t[1:], T, marker='.', markersize=0.1, linewidth=0.1, linestyle='-', color='b')
-    plt.xlabel('Time (t)')
-    plt.ylabel('Delta t')
-    plt.title('Time vs Delta t')
-    plt.grid(True)
-    plt.show()
-    
-    # Plotting t vs delta t until indet ix
-    ix = 1000
-    plt.figure(figsize=(10, 6))
-    plt.plot(t[1:ix+1], T[:ix], marker='.', markersize=0.1, linewidth=0.1, linestyle='-', color='b')
-    plt.xlabel('Time (t)')
-    plt.ylabel('Delta t')
-    plt.title('Time vs Delta t')
-    plt.grid(True)
-    plt.show()
-    
-    # Plot solver results
-    plt.figure(figsize=(10, 6))
-    plt.plot(t_solver+ sts_n - resting_time, y_solver[2], label=r'$Model_{V}$', color='b', linewidth=0.3)
-    plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('t (s)')
-    plt.ylabel(r'$V$ (mL)')
-    plt.title(r'Plot of $V$ (compartment 2) vs time')
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.show()
-    
-    # Plot solver results
-    plt.figure(figsize=(10, 6))
-    plt.plot(t_solver+ sts_n - resting_time, store_P[2], label=r'$Model_{P}$', color='b', linewidth=0.3)
-    plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('t (s)')
-    plt.ylabel(r'$P$ (mmHg)')
-    plt.title(r'Plot of $P$ (compartment 2) vs time')
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.show()
-    """
-    t_eval_trans = t_eval + sts_n - resting_time
-    """
-    # Plot the stand-up pressures
-    plt.figure(figsize=(10, 6), dpi=300)
-    plt.plot(t_eval_trans[11000:13500], store_P_intra[11000:13500], '-', label='$P_{muscle}:Thorax$', linewidth=2)
-    plt.plot(t_eval_trans[11000:13500], store_P_muscle[11000:13500], '-', label='$P_{muscle}:Abdom&Legs$', linewidth=2)
-    #plt.plot(t_eval_trans[10000:16000], store_P[12][10000:16000], '-', label='$P_{12}$', linewidth=.5)
-    plt.legend()
-    plt.xlabel('Time (s)')
-    plt.ylabel('Pressure (mmHg)')
-    #plt.vlines(x=[sts_n], ymin=[-10], ymax=[20], colors='k', ls='--', lw=1, label='stand-up')
-    plt.axvline(x=sts_n, color='black', linestyle='--', linewidth=2, label='stand-up')  
-    """
-    # Plot the stand-up pressures
-    plt.figure(figsize=(10, 6), dpi=300)
-    plt.plot(t_eval_trans[11000:13500], store_P_muscle2[0][11000:13500], 
-            '-', label='$P_{Legs}$', linewidth=2, color='steelblue')
-    plt.plot(t_eval_trans[11000:13500], store_P_muscle2[1][11000:13500], 
-            '-', label='$P_{Abdomen}$', linewidth=2, color='darkorange')
-    #plt.plot(t_eval_trans[11000:13500], store_P_muscle2[2][11000:13500], 
-    #        '-', label='$P^{muscle}Thorax$', linewidth=2, color='teal')
-    plt.plot(t_eval_trans[11000:13500], store_P_muscle2[3][11000:13500], 
-            '-', label='$P_{Thorax}$', linewidth=2, color='mediumseagreen')
-
-    #plt.plot(t_eval_trans[10000:16000], store_P[12][10000:16000], '-', label='$P_{12}$', linewidth=.5)
-    plt.legend(loc='upper left')
-    plt.xlabel('Time (s)')
-    plt.ylabel('Pressure (mmHg)')
-    #plt.vlines(x=[sts_n], ymin=[-10], ymax=[20], colors='k', ls='--', lw=1, label='stand-up')
-    plt.axvline(x=sts_n, color='black', linestyle='--', linewidth=2, label='stand-up')  
-    plt.grid(True)
-    #plt.ylim(-5,50)
-    plt.show()
-
-    
-    #reflexPars=_init_reflex()
-    p = reflexPars.p
-    s = reflexPars.s
-    a = reflexPars.a
-    v = reflexPars.v
-    cpv = reflexPars.cpv
-    cpa = reflexPars.cpa
-    x = np.linspace(0,60,960)
-    
-    plt.figure(figsize=(10, 6), dpi=300)
-    plt.plot(x, p, '-', label='$I_p$', linewidth=2) # parasympathetic
-    plt.plot(x, s, '-', label='$I_s$', linewidth=2) # sympathetic
-    plt.plot(x, a, '-', label='$I_a$', linewidth=2) # arterial
-    plt.plot(x, v, '-', label='$I_v$', linewidth=2) # venous
-    plt.plot(x, cpa, '-', label='$I_{cpa}$', linewidth=2) # cardiopulmonary arterial
-    plt.plot(x, cpv, '-', label='$I_{cpv}$', linewidth=2) # cardiopulmonary venous
-    plt.legend()
-    # Set y-axis ticks to display only three specific values
-    plt.yticks([0.00, 0.01, 0.02])  # Replace with the values you want to display
-    plt.yticks([0.00, 0.01, 0.02])  # Replace with the values you want to display
-    plt.xlabel('t (s)')
-    plt.ylabel('Normalized Response')
-    plt.ylim(0,0.02)
-    plt.xlim(0,45)
-    plt.show()
-
-    """
-    fig = plt.figure()
-    fig.figure(figsize=(10, 6), dpi=300)
-    ax = fig.add_subplot(1,1,1)
-    ax.plot(x, p, '-', label='p', linewidth=2)
-    ax.plot(x, s, '-', label='s', linewidth=2)
-    ax.plot(x, a, '-', label='a', linewidth=2)
-    ax.plot(x, v, '-', label='v', linewidth=2)
-    ax.plot(x, cpv, '-', label='cpv', linewidth=2)
-    ax.plot(x, cpa, '-', label='cpa', linewidth=2)
-    
-    ax.legend()
-    ax.set_xlabel('T (s)')
-    ax.set_ylabel('Normalized Response')
-    #ax.set_ylim(0,0.3)
-    ax.set_ylim(0,0.015)
-    plt.show()
-    
-    SUMZ = reflexPars.SUMZ
-    """
-    # Non-lin compliance plot
-    P_muscle = 0
-    #V = y_solver[12]
-    UV = store_UV[12][0]
-    Vmax12 = 1000
-    E = subjectPars.elastance[0,12]
-    V = np.linspace(0, 0.99*(Vmax12+UV), 1000)
-    P_nonlin=(np.tan((V-UV)/(2*Vmax12/np.pi)))/((np.pi*1/E)/(2*Vmax12))+P_muscle;
-    #P_nonlin=np.tan(np.pi*(V-UV)/(2*Vmax12))*(2*Vmax12*E)/np.pi+P_muscle;
-    
-    # Plotting
-    plt.figure(figsize=(10, 6), dpi=300)
-    # Plot with thicker line
-    plt.plot(V, P_nonlin, label=r'$P_{\text{12}}$', color='b', linewidth=2)
-
-    # Vertical line for UV with increased thickness
-    plt.axvline(x=UV, color='g', linestyle='--', linewidth=2, label=r'$UV_{\text{12}}$')  
-
-    # Vertical line for UV + Vmax12 with increased thickness
-    plt.axvline(x=UV + Vmax12, color='r', linestyle='--', linewidth=2, label=r'$UV_{\text{12}} + V^{max}_{\text{12}}$')  
-
-    # Add labels, title, legend, and grid
-    plt.xlabel(r'$V_{\text{12}}$ (mL)')
-    plt.ylabel(r'$P_{\text{12}}$ (mmHg)')
-    plt.title(r'Plot of $V_{\text{12}}$ vs $P_{\text{12}}$')
-    plt.legend(loc='upper left')
-
-    # Set axis limits
-    plt.xlim(600, 1750)
-    plt.ylim(-10, 300)
-
-    plt.grid(True)
-    plt.show()
-
-    """
-    # P and V over time
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(t_eval_trans, outputV[12], label=r'$V_{\text{12}}$', color='b')
-    #plt.plot(t_eval_trans, outputV[10], label=r'$V_{\text{10}}$', color='c')
-    plt.axhline(y=UV, color='g', linestyle='--', label=r'$V^0_{\text{12}}$')  # Add vertical line at UV
-    plt.axhline(y=UV+Vmax12, color='r', linestyle='--', label=r'$V^0_{\text{12}} + V^{max}_{\text{12}}$')  # Add vertical line at UV
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'Sit-to-stand')  # Add vertical line at UV
-    plt.xlabel('t (s)')
-    plt.ylabel(r'$V_{\text{12}}$ (mL)')
-    plt.title(r'Plot of volume vs time')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-
-    # alpha_tilt
-    # Plotting
-    plt.figure(figsize=(10, 6), dpi=300)
-    plt.plot(t_eval_trans[148000:160000], alpha_tilt[148000:160000], label=r'$\alpha_tilt$', color='b')
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=resting_time+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('t (s)')
-    plt.ylabel(r'$\alpha_tilt$ (°)')
-    plt.title(r'Plot of $\alpha_tilt$ vs time')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    # P_grav
-    # Plotting
-    plt.figure(figsize=(10, 6), dpi=300)
-    plt.plot(t_eval_trans[148000:160000], p_grav[12,148000:160000], label=r'$P_{h,12}$', color='b')
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=resting_time+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('t (s)')
-    plt.ylabel(r'$P_{h,12}$ (mmHg)')
-    plt.title(r'Plot of $P_{h,12}$ vs time')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    
-    
-    # Impulse 0
-    T_imp = np.linspace(0, tmax, 4193)
-    t_start = 2000
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,0], linewidth=0.5, label=r'$Parasympathetic$', color='b')
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=resting_time+7, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('T (s)')
-    plt.ylabel(r'Response')
-    plt.title(r'Plot of response vs T')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    # Impulse 1
-    T_imp = np.linspace(0, tmax, 4193)
-    t_start = 2000
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,1], linewidth=0.5, label=r'$\beta-Sympathetic$', color='b')
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=resting_time+7, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('T (s)')
-    plt.ylabel(r'Response')
-    plt.title(r'Plot of response vs T')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    # Impulse 2
-    T_imp = np.linspace(0, tmax, 4193)
-    t_start = 2000
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,2], linewidth=0.5, label=r'$Venous,\alpha-Sympathetic$', color='b')
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=resting_time+7, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('T (s)')
-    plt.ylabel(r'Response')
-    plt.title(r'Plot of response vs T')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    
-    # Impulse 3
-    T_imp = np.linspace(0, tmax, 4193)
-    t_start = 2000
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,3], linewidth=0.5, label=r'$Arterial,\alpha-Sympathetic$', color='b')
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=resting_time+7, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('T (s)')
-    plt.ylabel(r'Response')
-    plt.title(r'Plot of response vs T')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    # Impulse 4
-    T_imp = np.linspace(0, tmax, 4193)
-    t_start = 2000
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,4], linewidth=0.5, label=r'$Pulmonary-Venous,\alpha-Sympathetic$', color='b')
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=resting_time+7, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('T (s)')
-    plt.ylabel(r'Response')
-    plt.title(r'Plot of response vs T')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    
-    # Impulse 5
-    T_imp = np.linspace(0, tmax, 4193)
-    t_start = 2000
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,5], linewidth=0.5, label=r'$Pulmonary-Arterial,\alpha-Sympathetic$', color='b')
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=resting_time+7, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('T (s)')
-    plt.ylabel(r'Response')
-    plt.title(r'Plot of response vs T')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    
-    # Impulses
-    T_imp = np.linspace(0, tmax, 4193)
-    t_start = 2000
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,0], linewidth=0.5, label=r'$Para$')
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,1], linewidth=0.5, label=r'$\beta$')
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,2], linewidth=0.5, label=r'$Venous,\alpha$')
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,3], linewidth=0.5, label=r'$Arterial,\alpha$')
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,4], linewidth=0.5, label=r'$CP-Venous,\alpha$')
-    plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,5], linewidth=0.5, label=r'$CP-Arterial,\alpha$')
-    plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-    plt.axvline(x=resting_time+7, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-    plt.xlabel('t (s)')
-    plt.ylabel(r'Response')
-    plt.title(r'Plot of response vs t')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    """
-    # Cardiac E
-    Tav=0.12*np.sqrt(1)
-    Tsa=0.2*np.sqrt(1)
-    Tsv=0.3*np.sqrt(1)
-    t_start = 0
-    t_end = t_start + 80
-    # Assuming t_eval is your time vector and you want to plot up to t_end
-    min_time = t_eval[0]
-    max_time = t_eval[t_end - 1]
-    mid_time = (min_time + max_time) / 2
-    # Plotting
-    plt.figure(figsize=(8, 4), dpi=300)
-    plt.plot(t_eval[:t_end], store_E[0,:t_end], linewidth=2, label=r'$RA$', color='cornflowerblue', ls="--")
-    plt.plot(t_eval[:t_end], store_E[1,:t_end], linewidth=2, label=r'$RV$', color='navy')
-    plt.plot(t_eval[:t_end], store_E[2,:t_end], linewidth=2, label=r'$LA$', color = 'lightcoral', ls="--")
-    plt.plot(t_eval[:t_end], store_E[3,:t_end], linewidth=2, label=r'$LV$', color='darkred')
-    #plt.axvline(x=Tav, color='chocolate', linestyle='--', label=r'$Tav$')  # Add vertical line at UV
-    #plt.axvline(x=Tsa, color='lightgreen', linestyle='--', label=r'$Tsa$')  # Add vertical line at UV
-    #plt.axvline(x=Tav+Tsv, color='darkred', linestyle='--', label=r'$Tsv$')  # Add vertical line at UV
-    plt.xlabel('t (s)')
-    plt.ylabel(r'E (mmHg/mL)')
-    plt.title(r'Plot of Cardiac Elastance (E) vs Time (t)')
-    # Set x-ticks to min, mid, and max
-    plt.xticks([min_time, mid_time, max_time], [f"{min_time:.1f}", f"{mid_time:.1f}", f"{max_time:.1f}"])
-    plt.legend()
-    plt.grid(False)
-    plt.show()
-
-    
-    return
-
-#%%
-# Do 1 test run   
-run_switch = 1
-if run_switch == 1:
-    run_solve2()
-
-# Plot
-plot_switch = 1
-if plot_switch == 1:
-    plot()
-
-#%%
-# Parallel runs
-parallel_switch = 0
-if parallel_switch == 1:        
-
-    def run_model_with_params(param_set):
-        # Run your model using these parameters
-        result = solve2(param_set)
-        return result
-
-    inp = np.ones(27)
-    inp[24] = 0
-    # Modify the 20th index with values from 0.5 to 1.5 in increments of 0.1
-    parameter_values = np.arange(0.5, 1.6, 0.1)  # Generates [0.5, 0.6, ..., 1.5]
-
-    # Create a list to hold the modified arrays
-    modified_arrays = []
-
-    for value in parameter_values:
-        new_array = inp.copy()  # Copy the original array to avoid modifying it
-        new_array[20] = value   # Change the value at index 20
-        modified_arrays.append(new_array)
-
-    # Output results
-    print("Modified Arrays:")
-    for arr in modified_arrays:
-        print(arr)
-    """
-    import itertools
-
-    # Define ranges of parameters for the analysis
-    param1_values = [1, 2, 3]  # Example values for param1
-    param2_values = [0.1, 0.2, 0.3]  # Example values for param2
-
-    # Create a list of parameter combinations
-    param_combinations = list(itertools.product(param1_values, param2_values))
-    """
-    import multiprocessing
-
-    if __name__ == "__main__":
-        # Adjust the number of processes based on available cores
-        num_cores = multiprocessing.cpu_count()  # Or specify a number
-        #num_cores = len(modified_arrays)  # Or specify a number
-        with multiprocessing.Pool(processes=num_cores) as pool:
-            results = pool.map(run_model_with_params, modified_arrays)
-
-        
-        """
-        #IMPORT
-        data_time_10Hz = np.squeeze(data['data']['time_10Hz'][0][0])
-        data_MAP = np.squeeze(data['data']['map'][0][0])
-        """
-        plt.figure(figsize=(10, 6), dpi=300)
-
-        # Process results as needed
-        for result in results:
-    
-            Out_av, Out_wave, Out_solver = result
-            if cerebralModelOn==1:
-                t_mean, MAP, Finap, HR_model, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2 = Out_av[0][0], Out_av[0][1], Out_av[0][2], Out_av[0][3], Out_av[0][4], Out_av[0][5], Out_av[0][6], Out_av[0][7], Out_av[0][8], Out_av[0][9], Out_av[0][10], Out_av[0][11], Out_av[0][12], Out_av[0][13]
-            else:
-                t_mean, MAP, Finap, HR_model, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, store_P_muscle2 = Out_av[0][0], Out_av[0][1], Out_av[0][2], Out_av[0][3], Out_av[0][4], Out_av[0][5], Out_av[0][6], Out_av[0][7], Out_av[0][8], Out_av[0][9], Out_av[0][10]
-            t, wave_f, alpha_tilt, p_intra, p_muscle, p_grav, Elas = Out_wave[0][0], Out_wave[0][1], Out_wave[0][2], Out_wave[0][3], Out_wave[0][4], Out_wave[0][5], Out_wave[0][6]
-            t = Out_wave[0][0]
-            t_solver, y_solver = Out_solver
-            
-            # magic with indices and time for allignment
-            if time_after_sts > 100:
-                time_after_sts = 100
-            dt_data = round(data_time_10Hz[1]-data_time_10Hz[0],1)
-            start_index_model = int(resting_time/2/dt_data)
-            index_end = int((time_after_sts+resting_time)/dt_data)
-            
-            index_data_begin = find_index_of_time(data_time_10Hz, round(sts_n,1))-start_index_model
-            index_data_end = index_data_begin+index_end-start_index_model
-            x_data = data_MAP[index_data_begin:index_data_end]
-            
-            t_translated = t_mean + sts_n - resting_time
-            t_eval_trans = t_eval + sts_n - resting_time
-            #t_translated2 = t + sts_n - resting_time
-            
-            # INTERPOLATE FINAP #
-            # Desired sampling frequency
-            desired_frequency = 10  # Hz
-            desired_interval = 1 / desired_frequency  # Interval in seconds
-            
-            # Sys and Dia
-            new_times, new_minP = lin_interp(t_mean, store_BP_min, desired_interval)
-            new_times, new_maxP = lin_interp(t_mean, store_BP_max, desired_interval)
-            t_translated_new = (new_times + sts_n - resting_time)
-            window_t_trans = t_translated_new[start_index_model:index_end]
-            window_new_minP = new_minP[start_index_model:index_end]
-            window_new_maxP = new_maxP[start_index_model:index_end]
-            
-            # Plotting
-            plt.plot(window_t_trans, window_new_minP, label=r'$Model_{dia}$', color='navy')
-            plt.plot(window_t_trans, window_new_maxP, label=r'$Model_{sys}$', color='darkred')
-        plt.plot(data_time_10Hz[index_data_begin:index_data_end], data_DBP[index_data_begin:index_data_end], label=r'$Data_{dia}$', color='cornflowerblue', ls="--")
-        plt.plot(data_time_10Hz[index_data_begin:index_data_end], data_SBP[index_data_begin:index_data_end], label=r'$Data_{sys}$', color='lightcoral', ls="--")
-        plt.axvline(x=sts_n, color='grey', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        plt.xlabel('$t$ (s)')
-        plt.ylabel(r'$P$ (mmHg)')
-        plt.title(r'Plot of systolic and diastolic $P$ vs time')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        # Save the figure to a file (instead of showing it on Snellius)
-        plt.savefig('plot_systolic_diastolic_BP.png', format='png')
-
-        # Optionally, if you still want to display it in your local environment:
-        # plt.show()  # Comment this out if you don’t want to display it locally
-    print("SUCCES!")
-
-#%%
-# CA
-"""
-import matplotlib.pyplot as plt
-
-# Create the plot with the specified size and resolution
-plt.figure(figsize=(5, 3), dpi=300)
-
-# Set x-axis label and limit from 0 to 200, showing only 0, 100, and 200
-plt.xlabel('Perfusion Pressure (mmHg)')
-plt.xticks([0, 100, 200])
-plt.xlim(0, 200)
-
-# Set y-axis label but remove the tick numbers
-plt.ylabel('Blood Flow')
-plt.yticks([])  # Remove y-axis ticks
-
-# Show the plot
-plt.show()
-"""
-
-#%%
-# Compare addition of carotid
-"""
-carotidOn = 1
-run_solve2()
-
-t_trans_mca = tmean_mca + sts_n - resting_time
-store_V_mca_max_1 = store_V_mca_max[50:200]
-store_V_mca_min_1 = store_V_mca_min[50:200]
-t_trans_mca_1 = t_trans_mca[50:200]
-
-carotidOn = 0
-run_solve2()
-
-t_trans_mca = tmean_mca + sts_n - resting_time
-store_V_mca_max_2 = store_V_mca_max[50:200]
-store_V_mca_min_2 = store_V_mca_min[50:200]
-t_trans_mca_2 = t_trans_mca[50:200]
-
-# PLOT
-# Comparing two model runs for MCA velocity
-plt.figure(figsize=(10, 6), dpi=300)
-
-# First model run
-plt.plot(t_trans_mca_1, store_V_mca_max_1, label=r'$V_{MCA_{max, WITH}}$', color='lightcoral', linestyle='--')
-plt.plot(t_trans_mca_1, store_V_mca_min_1, label=r'$V_{MCA_{min, WITH}}$', color='cornflowerblue', linestyle='--')
-
-# Second model run
-plt.plot(t_trans_mca_2, store_V_mca_max_2, label=r'$V_{MCA_{max, W/O}}$', color='darkred', linestyle='-')
-plt.plot(t_trans_mca_2, store_V_mca_min_2, label=r'$V_{MCA_{min, W/O}}$', color='navy', linestyle='-')
-
-# Add vertical line (common to both runs)
-plt.axvline(x=sts_n, color='grey', linestyle='--', label=r'$t_0$') 
-
-# Labels and title
-plt.xlabel('t (s)')
-plt.ylabel(r'$V$ ($cm \times s^{-1}$)')
-plt.title(r'Comparison of middle cerebral artery velocity ($V_{MCA}$) vs time with and without (W/O) carotid')
-
-# Legend and grid
-plt.legend(loc='upper left')
-plt.grid(True)
-
-# Show the plot
-plt.show()
-"""
-
-
-
-
-#%%
-# SA (Sensitivity Analysis) test, with fewer parameters
-SA = 0
-if SA == 1:
-
-    # bounds
-    n_opti_var = 2
-    bounds = np.ones([n_opti_var,2])
-    l_bound = 0.5
-    u_bound = 1/l_bound
-
-    bounds[:,0] = bounds[:,0] * l_bound
-    bounds[:,1] = bounds[:,1] * u_bound
-
-    # SA
-    def wrapped_solver(X, func=solve2_test):
-        global buffer_front, buffer_back
-        # Desired sampling frequency
-        desired_frequency = 10  # Hz
-        desired_interval = 1 / desired_frequency  # Interval in seconds
-        buffer_front = 1 # s
-        buffer_back = 3 # s
-        N, D = X.shape
-        print("Size N = ", np.size(N))
-        print("Model inputs D = ", np.size(D))
-        results = np.zeros((X.shape[0], int(np.size(t_eval)/desired_frequency-(buffer_back+1)*desired_frequency)))
-        print(np.size(results))
-        for i in range(N):
-            X_row = X[i, :]
-            output = func(X_row)[0][0]
-            t_mean = output[0]
-            output_Pmax = output[4]
-            output_Pmin = output[5]
-            output_HR = output[6]
-            # Linear Interpolation
-            new_times, new_minP = lin_interp(t_mean, output_Pmin, desired_interval)
-            new_times, new_maxP = lin_interp(t_mean, output_Pmax, desired_interval)
-            index_start = find_index_of_time(new_times, buffer_front, tol=1e-5)
-            index_end = find_index_of_time(new_times, tmax-buffer_back, tol=1e-5)
-            results[i] = new_maxP[index_start:index_end]
-            print(str(i) + " of 320")
-
-        return results
-
-    # Sensitivity analysis (SA)
-    PS = ProblemSpec({
-        'num_vars': n_opti_var,
-        'names': ['RRsgain (HP)', 'RRpgain (HP)'],
-        'bounds': bounds,
-    })
-
-    fac = 1 # Samples = N*(2D+2), N=2**fac, D=model inputs=4
-
-    (
-        PS.sample_sobol(2**fac)
-        .evaluate(wrapped_solver)
-        .analyze_sobol(print_to_console=True)
-    )
-    
-
-    # Get first order sensitivities for all outputs
-
-    S1s = np.array([PS.analysis[_y]['S1'] for _y in PS['outputs']])
-
-    # Get model outputs
-    y = PS.results
-
-    # Set up figure
-    fig = plt.figure(figsize=(10, 6), constrained_layout=True)
-    gs = fig.add_gridspec(2, 2)
-
-    ax0 = fig.add_subplot(gs[0, 0])
-    ax1 = fig.add_subplot(gs[0, 1])
-    ax2 = fig.add_subplot(gs[1, 0])
-    ax3 = fig.add_subplot(gs[1, 1])
-
-    buffer_front = 1 # s
-    buffer_back = 3 # s
-    tmeans = np.linspace(buffer_front, tmax-buffer_back, int((tmax - buffer_back - buffer_front)*10))
-
-    # Populate figure subplots
-    for i, ax in enumerate([ax0, ax1, ax2, ax3]):
-        ax.plot(tmeans, S1s[:, i],
-                label=r'S1$_\mathregular{{{}}}$'.format(PS["names"][i]),
-                color='black')
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("First-order Sobol index")
-
-        ax.set_ylim(-0.1, 1.1)
-
-        ax.yaxis.set_label_position("right")
-        ax.yaxis.tick_right()
-
-        ax.legend(loc='upper right')
-
-    plt.show()
-
-
-    # Get total sensitivities for all outputs
-    STs = np.array([PS.analysis[_y]['ST'] for _y in PS['outputs']])
-
-    # Set up figure
-    fig = plt.figure(figsize=(10, 6), constrained_layout=True)
-    gs = fig.add_gridspec(2, 2)
-
-    ax0 = fig.add_subplot(gs[0, 0])
-    ax1 = fig.add_subplot(gs[0, 1])
-    ax2 = fig.add_subplot(gs[1, 0])
-    ax3 = fig.add_subplot(gs[1, 1])
-
-    # Populate figure subplots
-    for i, ax in enumerate([ax0, ax1, ax2, ax3]):
-        ax.plot(tmeans, STs[:, i],
-                label=r'ST$_\mathregular{{{}}}$'.format(PS["names"][i]),
-                color='black')
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Total Sobol index")
-
-        ax.set_ylim(-0.1, 1.1)
-
-        ax.yaxis.set_label_position("right")
-        ax.yaxis.tick_right()
-
-        ax.legend(loc='upper right')
-
-    plt.show()
-    
-
-    # Get second order sensitivities for all outputs
-
-    S2s = np.array([PS.analysis[_y]['S2'] for _y in PS['outputs']])
-
-    # Set up figure
-    fig1 = plt.figure(figsize=(10, 6), constrained_layout=True)
-    gs = fig1.add_gridspec(2, 3)
-
-    ax0 = fig1.add_subplot(gs[0, 0])
-    ax1 = fig1.add_subplot(gs[0, 1])
-    ax2 = fig1.add_subplot(gs[1, 0])
-    ax3 = fig1.add_subplot(gs[1, 1])
-    ax4 = fig1.add_subplot(gs[0, 2])
-    ax5 = fig1.add_subplot(gs[1, 2])
-
-    j=0
-    k=1
-
-    # Populate figure subplots
-    for i, ax in enumerate([ax0, ax1, ax2, ax3, ax4, ax5]):
-        print(str(j),str(i+k))
-        ax.plot(tmeans, S2s[:, j, i+k],
-                label=r'S2$_\mathregular{{{}}}$'.format(PS["names"][i+k])+'$_\mathregular{{{}}}$'.format(PS["names"][j]),
-                color='black')
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("second-order Sobol index")
-
-        ax.set_ylim(-1.1, 1.1)
-
-        ax.yaxis.set_label_position("right")
-        ax.yaxis.tick_right()
-
-        ax.legend(loc='upper right')
-        
-        if i+k==3:
-            k=k-2+j
-            j=j+1
-        
-    plt.show()
-    
-    # Plotting the results    
-    plt.plot(tmeans, np.mean(y, axis=0), label="Mean", color='black')
-
-    # in percent
-    prediction_interval = 95
-
-    plt.fill_between(tmeans,
-                    np.percentile(y, 50 - prediction_interval/2., axis=0),
-                    np.percentile(y, 50 + prediction_interval/2., axis=0),
-                    alpha=0.5, color='black',
-                    label=f"{prediction_interval} % prediction interval")
-
-    plt.xlabel("Time (s)")
-    plt.ylabel("MAP (mmHg)")
-    plt.legend(title=r"MAP",
-            loc='lower right')._legend_box.align = "left"
-
-    plt.show()
-
-
-
-    
-    # SA with all parameters
-    
-    # bounds
-    n_opti_var = 23
-    bounds = np.ones([n_opti_var,2])
-    l_bound = 0.5
-    u_bound = 1/l_bound
-
-    bound = 9
-    bounds[0:bound,0] = bounds[0:bound,0] * l_bound
-    bounds[0:bound,1] = bounds[0:bound,1] * u_bound
-
-    l_bound1 = 0.7
-    u_bound1 = 1/l_bound1
-    bounds[bound:,0] = bounds[bound:,0] * l_bound1
-    bounds[bound:,1] = bounds[bound:,1] * u_bound1
-
-    bounds[9,0] = 0.8
-    bounds[9,1] = 1/0.8
-    bounds[12,0] = 0.8
-    bounds[12,1] = 1/0.8
-
-    bounds[16,0] = 0.2
-    bounds[16,1] = 1/0.2
-    bounds[17,0] = 0.2
-    bounds[17,1] = 1/0.2
-
-    # SA
-    def wrapped_solver(X, func=solve2):
-        
-        # Desired sampling frequency
-        desired_frequency = 10  # Hz
-        desired_interval = 1 / desired_frequency  # Interval in seconds
-        buffer_front = 1 # s
-        buffer_back = 3 # s
-        N, D = X.shape
-        print("Size N = ", np.size(N))
-        print("Model inputs D = ", np.size(D))
-        results = np.zeros((X.shape[0], int(np.size(t_eval)/desired_frequency-(buffer_back+1)*desired_frequency)))
-        print(np.size(results))
-        for i in range(N):
-            X_row = X[i, :]
-            output = func(X_row)[0][0]
-            t_mean = output[0]
-            output_Pmax = output[4]
-            output_Pmin = output[5]
-            output_HR = output[6]
-            # Linear Interpolation
-            new_times, new_minP = lin_interp(t_mean, output_Pmin, desired_interval)
-            new_times, new_maxP = lin_interp(t_mean, output_Pmax, desired_interval)
-            index_start = find_index_of_time(new_times, buffer_front, tol=1e-5)
-            index_end = find_index_of_time(new_times, tmax-buffer_back, tol=1e-5)
-            results[i] = new_maxP[index_start:index_end]
-            print(str(i) + " of 320")
-
-        return results
-
-    # Sensitivity analysis (SA)
-    PS = ProblemSpec({
-        'num_vars': n_opti_var,
-        'names': ['RRsgain (HP)', 'RRpgain (HP)', 'beta (UV)', 'alpha (UV)', 'beta_resp (ErvMAX)', 'beta_resp (ElvMAX)', 'alpha_resp (R)', 'alphav_resp (R)', 'RAP_setp', 
-                        'ABP_setp', 'max_heart_E', 'min_heart_E', 'sys-dias_ratio', 'HR_t0', 'STS_P', 'Stand_P', 'grav_strong', 'grav_weak', 'global_R', 'global_UV', 
-                        'R_p', 'E_arteries', 'E_veins'],
-        'bounds': bounds,
-    })
-
-    fac = 1 # Samples = N*(2D+2), N=2**fac, D=model inputs=4
-
-    (
-        PS.sample_sobol(2**fac)
-        .evaluate(wrapped_solver)
-        .analyze_sobol(print_to_console=True)
-    )
-
-    PS.to_df()
-
-
-# %%

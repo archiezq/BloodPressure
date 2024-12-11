@@ -7,7 +7,7 @@ Created on 11-9-2024
 #%% IMPORTS
 from scipy.io import loadmat
 import numpy as np
-import CVSIM_Brain3_1 as model
+import CVSIM_Brain as model
 import matplotlib.pyplot as plt # Matplotlib is a comprehensive library for creating static, animated, and interactive visualizations in Python.
 import math
 from scipy.optimize import least_squares
@@ -439,7 +439,7 @@ def average_velocity_on_matching_times(time_list1, vel_list1, time_list2, vel_li
 #%% PARAMETERS AND THEIR OPTIMIZATION RANGES
 
 global n_variables, n_objectives, sliding_window_size, desired_interval, opti_hist, iteration, iter_tot
-n_variables = 26
+n_variables = 31
 n_objectives = 1
 
 sliding_window_size = 1 # periods
@@ -552,9 +552,9 @@ if snellius == False:
     if dataset == 1:
         filename = r"C:\Users\jsande\OneDrive - UvA\Documenten\UvA\Data\AMC_OneDrive_4-5-2024\Data validation study PROHEALTH\Preprocessed data\PHI022\Preprocessed_PHI022_FSup.mat"
     if dataset == 2:
-        csv_SBP = r"C:\Users\jsande\OneDrive - UvA\Documenten\UvA\Code\CVSIM\Lex\Brain2\mean_data_fallers_non_fallers_SBP.csv"
-        csv_DBP = r"C:\Users\jsande\OneDrive - UvA\Documenten\UvA\Code\CVSIM\Lex\Brain2\mean_data_fallers_non_fallers_DBP.csv"
-        csv_HR = r"C:\Users\jsande\OneDrive - UvA\Documenten\UvA\Code\CVSIM\Lex\Brain2\mean_data_fallers_non_fallers_HR.csv"
+        csv_SBP = r"D:\CLS\Thesis\Qi_CODE\mean_data_fallers_non_fallers_SBP.csv"
+        csv_DBP = r"D:\CLS\Thesis\Qi_CODE\mean_data_fallers_non_fallers_DBP.csv"
+        csv_HR = r"D:\CLS\Thesis\Qi_CODE\mean_data_fallers_non_fallers_HR.csv"
 
 if snellius == True:
     # Paths for when running on Snellius
