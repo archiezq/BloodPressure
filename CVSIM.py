@@ -69,12 +69,11 @@ This file runs the model
 version 1.0 - initial
 
 
------------------------------------------------------------------
-'''
+-----------------------------------------------------------------'''
 
 def solve(scaling, solve_config):
-    
-    # CVSIM - IMPORT
+
+    # CVSIM - IMPORT 
     import os
     clear = lambda: os.system('clear')
     clear()
@@ -100,354 +99,57 @@ def solve(scaling, solve_config):
     import CVSIM_utils as utils
     from adultPars_carotid import _init_pars # Get the parameters for resistance, elastance and uvolume
     from controlPars import _init_control # Get the control parameters loaded.
-    from reflexPars import _init_reflex # Get the reflex parameters loaded.
+    from reflexPars import _init_reflex # Get the control parameters loaded.
 
     Timer = timerz.Timer()
     Timer.start()
 
-    global subjectPars,controlPars,reflexPars
+    global subjectPars, controlPars, reflexPars
     reflexPars = _init_reflex(scaling); # Get all the reflex parameters stored to the list 'reflexPars'.
     subjectPars = _init_pars(scaling); # Here the compartments parameters are assigned
     controlPars = _init_control(); # Here the control parameters are assigned
-
+    
     global delta_t, HP, tmax, T, resting_time, limit_R, limit_UV, HR, abp_hist,pp_hist, rap_hist,para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv
     global s_abp, abp_ma,rap_ma,s_rap,abp_pp,pp_abp, ErvMAX, ElvMAX, V_micro, t_eval, store_P, store_HR, sts_n_end, strainTime
-    t_span = solve_config.get("t_span", [])
-    T = solve_config.get("T", [])
+    t_span = solve_config.get("t_span", [0, 250])
+    T = solve_config.get("T", 0.01)
     t_eval = solve_config.get("t_eval", [])
     weight = solve_config.get("weight", [])
     length = solve_config.get("length", [])
-    alpha_0 = solve_config.get("alpha_0", [])
-    planet = solve_config.get("planet", [])
-    StStest = solve_config.get("StStest", [])
-    TimeToStand = solve_config.get("TimeToStand", [])
-    startTimeStS = solve_config.get("startTimeStS", [])
-    strainTime = solve_config.get("strainTime", [])
-    micro_switch = solve_config.get("micro_switch", [])
-    cerebralVeinsOn = solve_config.get("cerebralVeinsOn", [])
-    carotidOn = solve_config.get("carotidOn", [])
-    ABRreflexOn = solve_config.get("ABRreflexOn", [])
-    CPRreflexOn = solve_config.get("CPRreflexOn", [])
-    fluidLoading = solve_config.get("fluidLoading", [])
+    alpha_0 = solve_config.get("alpha_0", 0)
+    planet = solve_config.get("planet", 1)
+    StStest = solve_config.get("StStest", 0)
+    TimeToStand = solve_config.get("TimeToStand", 5)
+    startTimeStS = solve_config.get("startTimeStS", 60)
+    strainTime = solve_config.get("strainTime", 0)
+    micro_switch = solve_config.get("micro_switch", 0)
+    cerebralVeinsOn = solve_config.get("cerebralVeinsOn", 0)
+    carotidOn = solve_config.get("carotidOn", 0)
+    ABRreflexOn = solve_config.get("ABRreflexOn", 0)
+    CPRreflexOn = solve_config.get("CPRreflexOn", 0)
+    fluidLoading = solve_config.get("fluidLoading", 0)
     ABP_setp = solve_config.get("ABP_setp", [])
-    
-    #======= define the cerebral parameters =======#
-    class cerebralPars:
-
-        # basal values of quantities related to the intracranial circuit (supine condition) Table 1
-        # LvL, i am going to need to clarification on what these parameters are/represent
-        C_pan = 0.205 # ml/mmHg, basal capacity of the pial arteries
-        DeltaC_pa1 = 2.87 # ml/mmHg
-        DeltaC_pa2 = 0.164 # ml/mmHg
-        G_aut = 3.0*scaling["G_aut"] # Gain of the autoregulation mechanism related to CBF variations
-        #G_aut = 1.0 # Gain of the autoregulation mechanism related to CBF variations
-        k_E = 0.077 # ml^-1, Intracranial elastance coefficient
-        k_R = 13.1*10**3 # mmHg^3 s ml^-1
-        k_ven = 0.155 # ml^-1
-        #-------
-        #P_a = 100 # mmHg , Lvl, in the original paper fixed at 100 mmHg. We want to make this pulsatile by linking it to the 21-comp model
-        P_car = 100 # mmHg, initial carotid pressure
-        R_car = 0.008 # mmHg s ml^-1, carotid resistance
-        """ R = 8*rho*L/(pi*r^4) = 8*3.5e-3*21.5e-2/(pi*(5.5e-3)^4) = 0.016 mmHg s ml^-1
-        2 resistors in parallel: 1/Rt = 1/R1 + 1/R2 = 1/0.008 mmHg s ml^-1
-        """
-        #-------
-        P_ic = 9.5 # mmHg
-        P_pa_initial = 58.9 # mmHg Lvl, is this a fixed value?
-        P_pa = 58.9 
-        P_v = 14.1 # mmHg LvL, is this a fixed value? difference with P_v1? Does not seem to be fixed see line 520
-        P_v1 = -2.5 # mmHg #LvL, Fixed?
-        P_vs = 6.0 # mmHg #LvL, dynamic value see line 587?
-        Q_n = 12.5 # ml/s, redifined in the code?
-        #Q_n = 12.5 # ml/s, redifined in the code?
-        R_0 = 526.3 # mmHg s ml^-1, Resistance to the cerebrospinal fluid outflow
-        R_f = 2.38*10**3 # mmHg s ml^-1
-        #R_la = 0.6 # mmHg s ml^-1, # ORIGINAL VALUE
-        R_la = 0.6 # mmHg s ml^-1
-
-        R_pv = 0.880 # mmHg s ml^-1
-        R_vs1 = 0.366 # mmHg s ml^-1
-        #tau_aut = 20 # s # ORIGINAL VALUE
-        tau_aut = 20 # s
-        x_aut = 2.16*10**(-4)
-        hbf = 0.0
-
-        # MCA velocity parameters (Hayashi et al. 1979) ORIGINAL VALUES
-        k_v = 1*scaling["k_v"] # Doppler angle correction parameter:
-        """ Scaling factor that accounts for the slope of the Doppler probe relative to the vessel under examination
-        and for the proportionality between average and maximum velocity in the section. """
-        r_mca_n = 0.14 # cm. MCA inner radius in basal condition
-        """ Sandhya Arvind Gunnal - 2019 - Diameter of the MCA at its middle of the main stem was measured. It was ranging from 2 to 5 mm with the mean of 3 mm. """
-        k_mca = 12 # parameter representing the rigidity of the artery
-        P_a_n = 100 # mmHg. Normal arterial pressure -> revise?
-        P_ic_n = 9.5 # mmHg. Normal intracranial pressure -> revise?
-
-        #k_v = 2/3 # Doppler angle correction parameter:
-        #r_mca_n = 0.14 # cm. MCA inner radius in basal condition
-        #k_mca = 12 # parameter representing the rigidity of the artery
-        #P_a_n = 100 # mmHg. Normal arterial pressure -> revise?
-        #P_ic_n = 9.5 # mmHg. Normal intracranial pressure -> revise?
-
-        "-------------------------------------------------------------------------------------------------------------"
-
-        # Table 2. Basal values of pressures related to the jugular-vertebral circuit (supine condition)
-
-        P_c3 = 6.00 # mmHg
-        P_c2 = 5.85 # mmHg
-        P_vv = 5.80 # mmHg
-        P_jr3 = 5.85# mmHg
-        P_jl3 = 5.85 # mmHg
-        P_jr2 = 5.70  # mmHg
-        P_jl2 = 5.70 # mmHg
-        P_azy = 5.50 # mmHg
-        P_svc1 = 5.40 # mmHg
-        P_svc = 5.20 # mmHg
-        #------
-        P_cv_initial = 5.0 # mmHg #Lvl, fixed CVP value that needs to be linked to the 21-comp model 
-        #------
-        P_j3ext = 0.0
-        P_j2ext = 0.0
-        P_j1ext = -6.5 # mmHg, avg thoracic pressure taken from source (18) as suggested by authors
-        P_rv = 5.30 # mmHg
-
-
-        "---------------------------- initial flows ----------------------------------------"
-
-        # Table 3. Basal values of flows related to the jugular-vertebral circuit (supine condition)
-
-        Q_car = 12.5 # ml/s
-        Q = 12.5 # ml/s
-        Q_la = 12.5 # ml/s ?
-        #Q_pa = 7.5 # ml/s ?
-        Q_pa = 12.5 # ml/s ?
-        Q_auto = 11.7
-        Q_jr3 = 5.85 # ml/s
-        Q_jl3  = 5.85 # ml/s
-        Q_vvr = 0.40 # ml/s
-        Q_vvl = 0.40 # ml/s
-        Q_ex = 5.00 # ml/s
-        Q_cjr3 = 1.00 # ml/s
-        Q_cjl3 = 1.00 # ml/s
-        Q_cjr2 = 1.00 # ml/s
-        Q_cjl2 = 1.00 # ml/s
-        Q_c2 = 3.00 # ml/s
-        Q_azy1 = 0.40 # ml/s
-        Q_lv = 0.13 # ml/s
-        Q_rv = 0.27 # ml/s
-
-        Q_svc = Q_jr3 + Q_jl3 + Q_vvr + Q_vvl # ml/s
-
-        "----------------------------------------- capacities ----------------------------------------------------"
-
-        # capacities related to the jugular-vertrebral circuit (supine condition) Table 4
-
-        C_vs = 0.5 # ml/mmHg
-        C_jr3 =  1.0 # ml/mmHg
-        C_jl3 =  1.0 # ml/mmHg
-        C_jr2 = 2.5 # ml/mmHg
-        C_jl2 = 2.5 # ml/mmHg
-        C_c3 = 0.7 # ml/mmHg
-        C_c2 = 1.4 # ml/mmHg
-        C_svc = 20.0 # ml/mmHg
-        C_azy = 0.5 # ml/mmHg
-        C_vv = 0.5 # ml/mmHg
-        C_svc1 = 18.0 #attempts to match the original model's predictions
-        #C_car = 1.63 # ml/mmHg, Duprez et al. 2000
-        #C_car = 0.2*(1/(1.07158593*1.6)) # ml/mmHg
-        C_car = 0.2 # ml/mmHg
-        
-
-        "-------------------------------------------------------------------------------------------------------------"
-
-        # values associated to posteriori information mentioned in text (last paragraph of assignment of basal parameters)
-        A = 0.8
-        k_jr3 = 11.0
-        k_jr2 = 13.0
-        k_jr1 = 6.9
-        k_jl3 = 11.0
-        k_jl2 = 13.0
-        k_jl1 = 6.9
-
-        "-------------------------------------------------------------------------------------------------------------"
-
-        P_paP_ic = P_pa_initial - P_ic # difference in pressure between pial arterioles and intracranial pressure (used to gain an initial value)
-
-        P_vP_ic = P_v - P_ic # difference in pressure between venous pressure and intracranial pressure 
-
-        # lengths of segments
-
-        L3 = 0.116 # m
-        L2  = 0.105 # m
-        L1 = 0.03 # m
-
-        "------------------------------------conductance calculations------------------------------------------"
-
-        # vessel conductances (calculated using pressure-flow relationships)
-
-        G_cjr3 = Q_cjr3/(P_c3 - P_jr3)
-        G_cjr2 = Q_cjr2/(P_c2 - P_jr2)
-        G_cjl3 = Q_cjl3/(P_c3 - P_jl3)
-        G_cjl2 = Q_cjl2/(P_c2 - P_jl2)
-
-        G_vv2 = (Q_vvr+Q_vvl)/(P_vv - P_rv)
-
-        G_c3 = 0 
-        G_c2 = Q_c2/(P_c3 - P_c2)
-        G_c1 = (Q_c2 - Q_cjr2 - Q_cjl2)/(P_c2 - P_cv_initial)
-
-        G_ex = Q_ex/(P_pa_initial - P_vs)
-
-        G_svc1 = (Q_jr3 + Q_cjr3 + Q_cjr2)/(P_jr2 - P_svc1) + (Q_jl3 + Q_cjl3 + Q_cjl2)/(P_jl2 - P_svc1)
-
-        G_svc2 = (Q_jr3 + Q_cjr3 + Q_cjr2 + Q_jl3 + Q_cjl3 + Q_cjl2 + Q_vvr + Q_vvl)/(P_svc1 - P_svc)
-
-        G_lv = Q_lv/(P_vv - P_azy)
-        G_rv = Q_rv/(P_vv - P_svc) # should this be P[4]?
-
-        G_vvr = Q_vvr/(P_vs - P_vv)
-        G_vvl = Q_vvl/(P_vs - P_vv)
-
-        G_0 = 1.0/R_0
-        G_azy1 = Q_azy1/(P_vv - P_azy)
-        G_azy2 = (Q_lv + Q_azy1)/(P_azy - P_svc1)
-
-        G_svc = Q_svc/(P_vs - P_svc)
-
-        "--------------------------------------loop timing------------------------------------------------------"
-
-        #dt = controlPars.T # time step
-        t = 0.0
-        run_once = 0
-
-
-        "-----------------------------empty arrays to store data---------------------------------------------"
-
-        #G_c2 = []
-        #G_c1 = []
-
-        alphalist = []
-        P_clist = []
-        P_palist = []
-        P_iclist = []
-        P_vlist = []
-        C_vilist = []
-        x_autlist = []
-        C_palist = []
-        R_palist = []
-        Q_flist = []
-        Q_0list = []
-        R_vslist = []
-        R_palist = []
-        C_iclist = []
-        G_jr3list = []
-        G_jr2list = []
-        G_jr1list =[]
-        G_jl3list = []
-        G_jl2list = []
-        G_jl1list =[]
-        G_vvrlist = []
-        G_vvllist = []
-        G_c1list = []
-        G_cjr3list = []
-        G_cjr2list = []
-        G_cjl3list = []
-        G_cjl2list = []
-        P_paP_iclist = []
-        C_iclist = []
-        C_vilist = []
-        C_palist = []
-        R_palist = []
-        x_autlist = []
-        Q_flist = []
-        Q_0list = []
-        Q_c3list =[]
-        Q_c2list = []
-        Q_c1list = []
-        Q_jr3list = []
-        Q_jr2list = []
-        Q_jr1list = []
-        Q_jl3list = []
-        Q_jl2list = []
-        Q_jl1list = []
-        Q_svc1list = []
-        Q_nlist = []
-        Qlist = []
-        tlist = []
-        P_vslist = []
-        tau_autlist = []
-        P_paP_icreducedlist = []
-        P_vP_iclist = []
-        P_jr3list = []
-        P_jr2list = []
-        P_jr1list = []
-        P_jl3list = []
-        P_jl2list = []
-        P_jl1list = []
-        P_svclist= []
-        P_svc1list = []
-        P_c1list = []
-        P_c2list = []
-        P_c3list = []
-        Q_vvrlist = []
-        Q_vvllist = []
-        Q_vvlist = []
-        P_vvlist = []
-        dP_vvdtlist = []
-        Q_cjr3list = []
-        Q_cjl3list = []
-        dP_jr3dtlist = []
-        dP_vP_icdtlist = []
-        Q_rvlist = []
-        Q_lvlist = []
-        P_azylist = []
-        P_vvlist = []
-        Q_vslist = []
-        Q_exlist = []
-        G_c3list = []
-        Q_list = []
-        Q_totlist = []
-        Q_svc2list = []
-        Q_rvlist = []
-        Q_azy2list = []
-        Q_svc3list = []
-        Qbrain_buffer = []
-        Q_autolist=[]
-        P_svc_reqlist = []
-        Q_out_netlist = []
-        #Qbrain_buffer=np.full(int(reflexPars.S_INT/controlPars.T),Q_n);
-        # thrombotic events
-        i_condition =0
-        clot_formation =  0 # set this to 1 to enable thrombotic events to occur
-        #i = 0 # i is defining different conditions for plot generation (simulating 0 conductances in vessels)
-            # LvL, please give some more info on what eacht i means.
-
-        dx_autdt = (1.0/tau_aut) * (-x_aut + G_aut * (Q_auto - Q_n) / Q_n) # initialize dx_autdt
 
     # Get all the pars from the different parameters values
-    global filename, sts_n
-    crb = cerebralPars()
     """
     sit_index = utils.find_index_of_time(data_time, sts0)
     stand_index = utils.find_index_of_time(data_time, sts1)
-    reflexPars.ABP_setp = sum(data_BP[sit_index:stand_index])/(stand_index-sit_index)*scaling["ABP_setp"]
+    #reflexPars.ABP_setp = sum(data_BP[sit_index:stand_index])/(stand_index-sit_index)*scaling["ABP_setp"]
 
     sit_index_10Hz = utils.find_index_of_time(data_time_10Hz, round(sts0, 1))
     stand_index_10Hz = utils.find_index_of_time(data_time_10Hz, round(sts1, 1))
-    #reflexPars.PP_setp = sum(data_SBP[sit_index_10Hz:stand_index_10Hz]-data_DBP[sit_index_10Hz:stand_index_10Hz])/(stand_index_10Hz-sit_index_10Hz)
-
+    reflexPars.PP_setp = sum(data_SBP[sit_index_10Hz:stand_index_10Hz]-data_DBP[sit_index_10Hz:stand_index_10Hz])/(stand_index_10Hz-sit_index_10Hz)
     """
     reflexPars.ABP_setp = ABP_setp*scaling["ABP_setp"]
     #print(reflexPars.ABP_setp)
-    crb.P_a_n = reflexPars.ABP_setp
-
+    
     # =============================================================================
     # Initial settings; Heart rate, Intrathoracic pressure, Total blood volume and Unstressed blood volume.
     # =============================================================================
+    
     HR = controlPars.hr*scaling["HR_t0"]
     HP=60/HR
-    
     RR=controlPars.RR
-    
     #P_intra_t0=controlPars.P_intra_t0;
     P_intra_t0=-4
     rrp=60/controlPars.RR; # Respiratory rate period
@@ -583,12 +285,12 @@ def solve(scaling, solve_config):
     gain2 = 0.007 * scaling["beta_resp_Elv"] # Elastance left ventricle
     gain3 = -0.05 * scaling["alpha_resp"] # Resistance arterial sensors
     gain4 = 0.05 * scaling["alphav_resp"] # Resistance venous sensors
-    
-    global grav_switch, sliding_window_size, baro_buffer, crb_buffer_size
+
+    global baro_buffer, crb_buffer_size
     baro_buffer = 4 # int
     crb_buffer_size = 2 # seconds, ORIGINAL
-    grav_switch = 1
-
+    #crb_buffer_size = 0.1 # seconds
+    
     """
     Assign the parameters
     """
@@ -648,7 +350,6 @@ def solve(scaling, solve_config):
     store_crb_G = np.zeros((12, len(t_eval))) # store jugular conductances
     store_crb_x = np.zeros(len(t_eval)) # State variable of the autoregulation mechanism related to cerebral flow variations
     store_crb_mca = np.zeros((2, len(t_eval))) # store velocity and radius of middle cerebral artery
-    crb.Qbrain_buffer = np.full(int(crb_buffer_size/T), crb.Q_n)
 
     global abp_buffer, rap_buffer, abp_ma, abp_pp, rap_ma, abp_hist, rap_hist, abp_hist, rap_hist, pp_hist
     #initilize the arrays needed for the relfexes
@@ -747,7 +448,9 @@ def solve(scaling, solve_config):
         UV[12] = utils.lim(UV[12], UV12, limit_UV)
         
 
-    """ RUN TIME EQUATIONS """
+    """
+         RUN TIME EQUATIONS
+    """
     global alpha_tilt, P_muscle_thorax, hydroP, P_muscle_abdom, P_muscle_legs
     alpha_tilt = alpha_0
     #P_muscle = 0 # 
@@ -802,7 +505,9 @@ def solve(scaling, solve_config):
         #V[x]=UV[x]
     V[21] = V_micro
     
-    """ !!! Start the simulation !!! """
+    """!!!
+        Start the simulation
+    """
     def esse_cerebral_NEW(t, x_esse):
         global nrr, ncc, nrf, n, n4, HP, V_micro, ElvMIN, ErvMIN, ErvMAX, ElvMAX
         global abp_buffer, rap_buffer, abp_ma, abp_pp, rap_ma, abp_hist, rap_hist, abp_hist, rap_hist, pp_hist
@@ -814,26 +519,6 @@ def solve(scaling, solve_config):
         """ Update values """
         V = x_esse[:22]  # Volumes of cardiovascular model
         V_micro = V[-1] # V_micro
-        crb.x_aut = x_esse[22] # autoregulation
-        crb.P_vP_ic = x_esse[23] # pressure of cerebal veins vi from equation (5)
-        crb.P_paP_ic = x_esse[24] # pressure of pial arterioles from equation (3)
-        crb.P_ic = x_esse[25] # intracranial pressure from equation (15)
-        crb.P_vs = x_esse[26] # cerebral sinus veins pressure
-        if carotidOn==1:
-            crb.P_car = x_esse[27] # carotid artery pressure
-        if cerebralVeinsOn==1:
-            crb.P_jr3 = x_esse[27+carotidOn] # 3rd segment of the right jugular vein pressure
-            crb.P_jl3 = x_esse[28+carotidOn] # 3rd segment of the left jugular vein pressure
-            crb.P_jr2 = x_esse[29+carotidOn] # 2nd segment of the right jugular vein pressure
-            crb.P_jl2 = x_esse[30+carotidOn] # 2nd segment of the left jugular vein pressure
-            crb.P_c3 = x_esse[31+carotidOn] # pressure in upper segment of the collateral network
-            crb.P_c2 = x_esse[32+carotidOn] # pressure in middle segment of the collateral network
-            crb.P_svc1 = x_esse[33+carotidOn] # pressure in the superior segment of the superior vena cava
-            crb.P_azy = x_esse[34+carotidOn] # pressure in the azygos system
-            crb.P_svc = x_esse[35+carotidOn] # testing?
-            crb.P_vv = x_esse[36+carotidOn] # pressure in the vertebral vein
-        crb.P_v = crb.P_vP_ic + crb.P_ic # venous pressure ?
-        crb.P_pa = crb.P_paP_ic + crb.P_ic # pial arterioles pressure
 
         """ Make sure there is no volume added or removed as a result of the integration """
         sum_v = np.sum(V[:-1]) 
@@ -953,6 +638,9 @@ def solve(scaling, solve_config):
             P_intra = P_muscle_thorax + P_intra_t0 + ((Pmusmin/(1-np.exp(-TE/tau)))*(np.exp(-((t_resp)-TI)/tau)-np.exp(-TE/tau)))-(np.sin(alpha_tilt/(2*np.pi))); 
         
         """ Calculate the pressures """
+        global grav_switch
+        grav_switch = 1
+
         # This equations calculated the new pressure based on the compartment's Elastance, volume and unstressed volume.
         # for the intra-thoracic compartments: add the intra-thoracic pressure
         P[0]=(E[0]*(V[0]-UV[0])+P_intra)
@@ -977,282 +665,6 @@ def solve(scaling, solve_config):
         P[8]=(E[8]*(V[8]-UV[8]))+P_muscle_abdom
         P[9]=(E[9]*(V[9]-UV[9]))+P_muscle_abdom
         P[11]=(E[11]*(V[11]-UV[11]))+P_muscle_legs
-
-        "----------------------------------blood clot modelling------------------------------------------------"
-
-        #clot_start = 10 # choose time for clot to start
-
-        #if crb.crb.clot_formation > 0:
-        #    if t>crb.clot_start:
-        #        crb.G_jr1 = 0    # choose clot location by setting the conductance of a compartment to 0
-        #        crb.G_jl1 = 0
-        #        # G_azy2 = 0 
-
-        
-        "-------------------------------intracranial equations-----------------------------------------------"
-        """
-        #if len(crb.Qbrain_buffer) > int(2000): # Cerebral
-        #    crb.Q_auto = np.mean(crb.Qbrain_buffer[-2000:])
-            #print("AAN")
-        # differential equation describing autoregulation from equation (7)
-        # Cerebral autoregulation is a function of flow in this model. Something we should discus in the manuscript.
-        #if len(crb.Qbrain_buffer) > int(int(reflexPars.S_INT/controlPars.T)):
-        #    crb.Q_auto = np.mean(crb.Qbrain_buffer[-(int(reflexPars.S_INT/controlPars.T)):])
-        #if len(crb.Qbrain_buffer) > int(2000):
-        #    crb.Q_auto = np.mean(crb.Qbrain_buffer[-2000:])
-        crb.Q_auto = np.mean(crb.Qbrain_buffer)
-        crb.dx_autdt = (1.0/crb.tau_aut) * (-crb.x_aut + crb.G_aut * (crb.Q_auto - crb.Q_n) / crb.Q_n) 
-
-        #crb.dx_autdt = (1.0/crb.tau_aut)*(-crb.x_aut + crb.G_aut*(crb.Q_la-crb.Q_n)/crb.Q_n) 
-        # when I calculate Q, Q_n = 12.5 causes the model to fail during the supine to standing test. 
-        """
-
-        # calculate autoregulation
-        #crb.x_aut += crb.dx_autdt*crb.dt 
-        # conditions for vasoconstriction/vasodilation
-        if crb.x_aut <= 0.0: # vasodilation, added OR EQUALS
-            crb.DeltaC_pa = crb.DeltaC_pa1
-            crb.kC_pa = crb.DeltaC_pa1/4.0
-        if crb.x_aut > 0.0: #vasocontriction
-            crb.DeltaC_pa = crb.DeltaC_pa2
-            crb.kC_pa = crb.DeltaC_pa2/4.0
-            
-        # calculate intranical capacity
-        crb.C_ic = 1.0/(crb.k_E*crb.P_ic)
-        
-        # calculate cerebral veins vi capacity from equation (6)
-        crb.C_vi = 1.0/(crb.k_ven*(crb.P_v - crb.P_ic - crb.P_v1))
-        
-        # calculate pial arteries capacity from equation (8)
-        crb.C_pa = (crb.C_pan-crb.DeltaC_pa/2.0 + (crb.C_pan + crb.DeltaC_pa/2.0)*np.exp(-crb.x_aut/crb.kC_pa))/(1.0+np.exp(-crb.x_aut/crb.kC_pa))
-
-        # Formula uses dx_autdt from the previous timestep, but x_aut from the current timestep, is this correct?
-        crb.dC_padt = (-crb.DeltaC_pa*crb.dx_autdt)/(crb.kC_pa*(1+np.exp(-crb.x_aut/crb.kC_pa)))
-        
-        # calculate pial arterial resistance from equation (11)
-        crb.R_pa = crb.k_R*crb.C_pan**2/(((crb.P_pa-crb.P_ic)*crb.C_pa)**2)
-        
-        # calculate capillary pressure from equation (4)
-        crb.P_c = (crb.P_v/crb.R_pv + crb.P_pa/(crb.R_pa/2.0) + 
-                crb.P_ic/crb.R_f)/(1.0/crb.R_pv + 1.0/(crb.R_pa/2.0) + 1.0/crb.R_f)
-
-        
-        "------------------------------------intracranial flows and further pressures---------------------------------"
-        
-        # calculate CSF formation rate from equation (12)
-        if crb.P_c>crb.P_ic:
-            crb.Q_f = (crb.P_c - crb.P_ic)/crb.R_f 
-        else: 
-            crb.Q_f = 0.0
-            
-        # calculate CSF outflow rate from equation (13)
-        if crb.P_ic>crb.P_vs:
-            crb.Q_0 = (crb.P_ic - crb.P_vs)/crb.R_0
-        else: 
-            crb.Q_0 = 0.0
-        
-        # calculate resistance of the terminal intracranial veins R_vs
-        if crb.P_v>crb.P_vs:
-            crb.R_vs = (crb.P_v - crb.P_vs)/(crb.P_v - crb.P_ic)*crb.R_vs1
-        else: 
-            crb.R_vs = crb.R_vs1
-            
-        # calculating the conductance of the terminal intracranial veins
-        crb.G_vs = 1.0/crb.R_vs
-
-        # differential equation describing pressure of cerebal veins vi from equation (5)
-        crb.dP_vP_icdt = 1.0/crb.C_vi*((crb.P_c - crb.P_v)/crb.R_pv - (crb.P_v - crb.P_vs)/crb.R_vs)
-
-        # NEW
-        if carotidOn==1:
-            # differential equation pressure of pial arterioles from equation (3)   
-            crb.dP_cardt = 1/crb.C_car*( (P[1] - crb.P_car)/crb.R_car - (crb.P_car - crb.P_pa)/(crb.R_la + (crb.R_pa/2)))
-            crb.dP_paP_icreduceddt = 1/crb.C_pa*((crb.P_car - crb.P_pa)/(crb.R_la + (crb.R_pa/2)) - (crb.P_pa - crb.P_c)/(crb.R_pa/2) - crb.dC_padt*(crb.P_pa - crb.P_ic))
-
-            crb.Q_car = (P[1] - crb.P_car - Pgrav[21])/(crb.R_car + crb.R_la)
-            if crb.Q_car < 0:
-                crb.Q_car = 0
-
-            crb.Q_la = (crb.P_car - crb.P_pa)/(crb.R_la + crb.R_pa/2)
-            # calculating flow velocity of MCA
-            detla_P_car_ic = crb.P_car - crb.P_ic
-            if detla_P_car_ic < 0:
-                detla_P_car_ic = 0.0001
-            crb.r_mca = crb.r_mca_n * (np.log((detla_P_car_ic) / (crb.P_a_n - crb.P_ic_n)) / crb.k_mca + 1) # new
-
-        if carotidOn==0:
-            # differential equation pressure of pial arterioles from equation (3)   
-            crb.dP_paP_icreduceddt = 1/crb.C_pa*((P[1] - crb.P_pa)/(crb.R_la + (crb.R_pa/2)) - (crb.P_pa - crb.P_c)/(crb.R_pa/2)- crb.dC_padt*(crb.P_pa-crb.P_ic))
-            crb.Q_la = (P[1] - crb.P_pa - Pgrav[21])/(crb.R_la + crb.R_pa/2)
-
-            # calculating flow velocity of MCA
-            detla_P_car_ic = P[1] - crb.P_ic
-            if detla_P_car_ic < 0:
-                detla_P_car_ic = 0.0001
-            crb.r_mca = crb.r_mca_n * (np.log((detla_P_car_ic) / (crb.P_a_n - crb.P_ic_n)) / crb.k_mca + 1) # new
-
-        if crb.Q_la <0:
-            crb.Q_la =0
-
-        crb.Q_pa = (crb.P_pa - crb.P_c)/(crb.R_pa/2)
-
-        # differential equation describing intracranial pressure from equation (15)
-        # dP_icreduceddt = dP_icdt - 1/C_ic*(P_paP_ic*C_pa + (P_vP_ic)*C_vi + C_pa*(P_a-P_ic))
-        crb.dP_icreduceddt = 1.0/crb.C_ic*(crb.dP_paP_icreduceddt*crb.C_pa + crb.dP_vP_icdt*crb.C_vi + crb.dC_padt*(crb.P_pa-crb.P_ic) + crb.Q_f - crb.Q_0 + crb.hbf) 
-
-        #crb.Q_n = 12.5
-        # I've set Q = Q_n here. When Q_n = 12.5, issues are caused in the autoregulation 
-        #when going from supine to standing, I suppose it's due to an unrecoverable flow.
-        
-        # calculating flow velocity of MCA
-        crb.v_mca = crb.k_v * crb.Q_la / (3 * np.pi * crb.r_mca**2) # new
-
-        # calculating flow in the venous sinus
-        crb.Q_vs = crb.G_vs*(crb.P_v - crb.P_vs)
-
-        if cerebralVeinsOn==0:
-
-            crb.Q_svc = crb.G_svc * (crb.P_vs - P[4]) # new
-
-            # differential equation for venous sinus pressures
-            crb.dP_vsdt = 1.0/crb.C_vs*((crb.P_v - crb.P_vs)*crb.G_vs - (crb.P_vs - crb.P_ic)*crb.G_0 - (crb.P_vs - P[4]) * crb.G_svc)
-
-
-        if cerebralVeinsOn==1:
-
-            # calculating flow in the azygos veins
-            crb.Q_azy2 = (crb.P_azy - P[4])*crb.G_azy2 # new, seems to be okay
-            
-            # calculating flow in the external carotid
-            if carotidOn==1:
-                crb.Q_ex = crb.G_ex*(crb.P_car - crb.P_c3) # adjusted to P_c3 rather than P_vs
-            else:
-                crb.Q_ex = crb.G_ex*(P[1] - crb.P_c3 - Pgrav[21]) # adjusted to P_c3 rather than P_vs 
-
-            # calculating total flow into intracranial model 
-            crb.Q_tot = crb.Q_la + crb.Q_ex # new
-
-            if crb.i_condition == 0:
-                crb.G_jr3 = crb.k_jr3*(1.0+(2.0/np.pi)*np.arctan((crb.P_vs - hydroP*crb.L3 - crb.P_j3ext)/crb.A))**2
-                crb.G_jl3 = crb.k_jl3*(1.0+(2.0/np.pi)*np.arctan((crb.P_vs - hydroP*crb.L3 - crb.P_j3ext)/crb.A))**2
-                crb.G_jr2 = crb.k_jr2*(1.0+(2.0/np.pi)*np.arctan((crb.P_jr3 - hydroP*crb.L2 - crb.P_j2ext)/crb.A))**2
-                crb.G_jl2 = crb.k_jl2*(1.0+(2.0/np.pi)*np.arctan((crb.P_jl3 - hydroP*crb.L2 - crb.P_j2ext)/crb.A))**2
-                crb.G_jr1 = crb.k_jr1*(1.0+(2.0/np.pi)*np.arctan((crb.P_jr2 - hydroP*crb.L1 - crb.P_j1ext)/crb.A))**2
-                crb.G_jl1 = crb.k_jl1*(1.0+(2.0/np.pi)*np.arctan((crb.P_jl2 - hydroP*crb.L1 - crb.P_j1ext)/crb.A))**2
-                
-            if crb.i_condition == 1:
-                crb.G_jr3 = 0
-
-            if crb.i_condition>1 and crb.i_condition<3:
-                crb.G_jr2 = 0
-
-            if crb.i_condition>2 and crb.i_condition<4:
-                crb.G_jr1 = 0
-
-            "-------------------------------jugular-vertebral flows---------------------------------------------------------"
-
-            # calculating flow in the collateral segments 
-            crb.Q_c3 = crb.G_c3*(crb.P_vs - crb.P_c3)
-            crb.Q_c2 = crb.G_c2*(crb.P_c3 - crb.P_c2)
-            crb.Q_c1 = crb.G_c1*(crb.P_c2 - P[4]) # Qc1 Flow in the lower segment of the collateral network, does this flow into C[4]?
-
-            # calculating flow in the anastomotic connections
-            crb.Q_cjr3 = crb.G_cjr3*(crb.P_c3 - crb.P_jr3)
-            crb.Q_cjr2 = crb.G_cjr2*(crb.P_c2 - crb.P_jr2)
-            crb.Q_cjl3 = crb.G_cjl3*(crb.P_c3 - crb.P_jl3)
-            crb.Q_cjl2 = crb.G_cjl2*(crb.P_c2 - crb.P_jl2)
-
-            # calculating flow in the jugular segments
-            crb.Q_jr3 = crb.G_jr3*(crb.P_vs - crb.P_jr3) 
-            crb.Q_jl3 = crb.G_jl3*(crb.P_vs - crb.P_jl3) 
-            crb.Q_jr2 = crb.G_jr2*(crb.P_jr3 - crb.P_jr2)
-            crb.Q_jl2 = crb.G_jl2*(crb.P_jl3 - crb.P_jl2)
-            crb.Q_jr1 = crb.G_jr1*(crb.P_jr2 - crb.P_svc1)
-            crb.Q_jl1 = crb.G_jl1*(crb.P_jl2 - crb.P_svc1)
-
-            # calculating flow in the vertebral veins
-            crb.Q_vv = crb.G_vvr*(crb.P_vs - crb.P_vv) + crb.G_vvl*(crb.P_vs - crb.P_vv)
-            crb.Q_vvr = crb.G_vvr*(crb.P_vs - crb.P_vv)
-            crb.Q_vvl = crb.G_vvl*(crb.P_vs - crb.P_vv)
-
-            # Calculating flow in the superior vena cava (superior tract)
-            #crb.Q_svc1 = crb.G_jr1*(crb.P_jr2 - crb.P_svc1) + crb.G_jl1*(crb.P_jl2 - crb.P_svc1) # why?
-            crb.Q_svc1 = crb.Q_jr1 + crb.Q_jl1 # doesn't use P[4]
-
-            # Calculating flow in the renal vein
-            crb.Q_rv = crb.G_rv*(crb.P_vv - P[14]) # new, P[4] -> P[14]
-
-            # Calculating outflow in the model
-            #crb.Q_svc2 = (crb.P_svc1-P[4])*crb.G_svc2
-
-            "-------------------------------jugular-vertebral circuit equations-----------------------------------------------"
-            
-            # differential equation for venous sinus pressures
-            crb.dP_vsdt = 1.0/crb.C_vs*((crb.P_v - crb.P_vs)*crb.G_vs - (crb.P_vs - crb.P_ic)*crb.G_0 - (crb.P_vs-crb.P_jr3)*crb.G_jr3 -
-                                        (crb.P_vs - crb.P_jl3)*crb.G_jl3 - (crb.P_vs - crb.P_c3)*crb.G_c3 - (crb.P_vs - crb.P_vv)*crb.G_vvr - (crb.P_vs - crb.P_vv)*crb.G_vvl)
-                
-            # differential equation describing pressure in the 3rd segment of the right jugular vein
-            crb.dP_jr3dt = 1.0/crb.C_jr3*((crb.P_vs-crb.P_jr3)*crb.G_jr3 - (crb.P_jr3 - crb.P_c3)*crb.G_cjr3 - (crb.P_jr3-crb.P_jr2)*crb.G_jr2)
-                        
-            # differential equation describing pressure in the 3rd segment of the left jugular vein
-            crb.dP_jl3dt = 1.0/crb.C_jl3*((crb.P_vs-crb.P_jl3)*crb.G_jl3 - (crb.P_jl3 - crb.P_c3)*crb.G_cjl3 - (crb.P_jl3-crb.P_jl2)*crb.G_jl2)    
-                        
-            # differential equation describing pressure in the 2nd segment of the right jugular vein
-            crb.dP_jr2dt = 1.0/crb.C_jr2*((crb.P_jr3 - crb.P_jr2)*crb.G_jr2 - (crb.P_jr2 - crb.P_c2)*crb.G_cjr2 - (crb.P_jr2 - crb.P_svc1)*crb.G_jr1)
-                                            
-            # differential equation describing pressure in the 2nd segment of the left jugular vein
-            crb.dP_jl2dt = 1.0/crb.C_jl2*((crb.P_jl3 - crb.P_jl2)*crb.G_jl2 - (crb.P_jl2 - crb.P_c2)*crb.G_cjl2 - (crb.P_jl2 - crb.P_svc1)*crb.G_jl1)
-                        
-            # differential equation describing pressure in upper segment of the collateral network
-            crb.dP_c3dt = 1.0/crb.C_c3*((crb.P_vs - crb.P_c3)*crb.G_c3 + (crb.P_jr3 - crb.P_c3)*crb.G_cjr3 + 
-                                        (crb.P_jl3 - crb.P_c3)*crb.G_cjl3 + (P[1] - crb.P_c3)*crb.G_ex - 
-                                        (crb.P_c3-crb.P_c2)*crb.G_c2)
-                        
-            # differential equation describing pressure in middle segment of the collateral network
-            crb.dP_c2dt = 1.0/crb.C_c2*((crb.P_c3 - crb.P_c2)*crb.G_c2 + (crb.P_jr2 - crb.P_c2)*crb.G_cjr2 + (crb.P_jl2 - crb.P_c2)*crb.G_cjl2 - (crb.P_c2-P[4])*crb.G_c1)
-            
-            # define a new, intermediary pressure compartment to ensure inflow into cerebral model equals out flow
-            # we must define a new net outflow that is the difference between the inflow and outflow of all other exiting compartments
-            crb.Q_out_net = crb.Q_tot - (crb.Q_c1 + crb.Q_rv)
-                    
-            # differential equation describing pressure in the superior segment of the superior vena cava
-            crb.dP_svc1dt = 1.0/crb.C_svc1*(crb.G_jr1*(crb.P_jr2 - crb.P_svc1) + 
-                                            crb.G_jl1*(crb.P_jl2 - crb.P_svc1) 
-                                            - (crb.P_svc1-crb.P_svc)*crb.G_svc1) # note I've estimated C_svc1
-                        
-            # diffentrial equation descrbing pressure in the azygos system
-            crb.dP_azydt = 1/crb.C_azy*((crb.P_vv - crb.P_azy)*crb.G_azy1 + (crb.P_rv - crb.P_azy)*crb.G_lv - 
-                                        (crb.P_azy - crb.P_svc)*crb.G_azy2)
-        
-            # testing ?
-            crb.dP_svcdt = 1.0/crb.C_svc*(crb.G_svc1*(crb.P_svc1-crb.P_svc) + crb.G_azy2*(crb.P_azy-crb.P_svc) 
-                                        - crb.Q_out_net)
-            #                                      - crb.G_svc2*(crb.P_svc - P[4])) # ?
-        
-            crb.Q_svc2 = crb.Q_out_net # Check this!
-            
-            # differential equation describing pressure in the vertebral vein
-            crb.dP_vvdt = 1.0/crb.C_vv*(crb.G_vvr*(crb.P_vs - crb.P_vv) + crb.G_vvl*(crb.P_vs - crb.P_vv)
-                                        - crb.G_vv2*(crb.P_vv - crb.P_rv) - crb.G_azy1*(crb.P_vv - crb.P_azy))
-        
-        """
-        # for plotting flows
-        if n < startTimeStS/2:
-            flows_supine = [crb.Q_tot, crb.Q_ex, crb.Q_jr3 + crb.Q_jl3, crb.Q_jr2 + crb.Q_jl2, crb.Q_jr1 + crb.Q_jl1, crb.Q_vv, crb.Q_c3, crb.Q_svc1, crb.Q_svc2 + crb.Q_c1 + crb.Q_rv]
-        
-        if n > (startTimeStS+tau_STS):
-            flows_upright = [crb.Q_tot, crb.Q_ex, crb.Q_jr3 + crb.Q_jl3, crb.Q_jr2 + crb.Q_jl2, crb.Q_jr1 + crb.Q_jl1, crb.Q_vv, crb.Q_c3, crb.Q_svc1, crb.Q_svc2 + crb.Q_c1 + crb.Q_rv]
-        
-        #cerebral_flow = [crb.Q_tot, crb.Q_ex, crb.Q_jr3 + crb.Q_jl3, crb.Q_jr2 + crb.Q_jl2, crb.Q_jr1 + crb.Q_jl1, crb.Q_vv, crb.Q_c3, crb.Q_svc1, crb.Q_svc2 + crb.Q_c1 + crb.Q_rv]
-        """
-        #if t < start_time:
-        #    flows_supine = [Q + Q_ex, Q_ex, Q, Q_jr3 + Q_jl3, Q_jr2 + Q_jl2, Q_jr1 + Q_jl1, Q_vv, Q_c3, Q_svc1]
-            
-        #if t>start_time + tau_1:
-        #    flows_upright = [Q+Q_ex, Q_ex, Q, Q_jr3 + Q_jl3, Q_jr2 + Q_jl2, Q_jr1 + Q_jl1, Q_vv, Q_c3, Q_svc1]
-            
-        # =============================================================================
-    
 
         """ Microcirculation """
         if micro_switch == 0:
@@ -1436,10 +848,10 @@ def solve(scaling, solve_config):
         # Calculate the derivatives of volumes for cardiovascular model
         dVdt = np.zeros(22)
         dVdt[0] = F[0]-F[1]-F[6]
-
+        dVdt[1] = F[1]-F[2]
         dVdt[2] = F[2]-F[3]
         dVdt[3] = F[3]-F[4] - F_micro_upper
-
+        dVdt[4] = F[4]-F[5] + F_lymphatic
         dVdt[5] = F[6]-F[7]
         dVdt[6] = F[7]-F[8]-F[11]-F[14]
         dVdt[7] = F[8]-F[9]
@@ -1449,7 +861,7 @@ def solve(scaling, solve_config):
         dVdt[11] = F[14]-F[15]
         dVdt[12] = F[15]-F[16] - F_micro_lower
         dVdt[13] = F[10]+F[13]+F[16]-F[17]
-
+        dVdt[14] = F[17]-F[18]
         dVdt[15] = F[5]+F[18]-F[19]
         dVdt[16] = F[19]-F[20]
         dVdt[17] = F[20]-F[21]
@@ -1457,19 +869,6 @@ def solve(scaling, solve_config):
         dVdt[19] = F[22]-F[23]
         dVdt[20] = F[23]-F[0]
         dVdt[-1] = F_micro_lower + F_micro_upper - F_lymphatic
-
-        if carotidOn==1:
-            dVdt[1] = F[1]-F[2] - crb.Q_car
-        if carotidOn==0 and cerebralVeinsOn==0: # if carotid is OFF
-            dVdt[1] = F[1]-F[2] - crb.Q_la # Blood is now also flowing into the brain model of Patrick.
-        if carotidOn==0 and cerebralVeinsOn==1:
-            dVdt[1] = F[1]-F[2] - crb.Q_la - crb.Q_ex
-        if cerebralVeinsOn==1:
-            dVdt[4] = F[4]-F[5] + F_lymphatic + crb.Q_svc2 # Renal vein shouldn't enter compartment 4, also svc2 is the lower 
-            dVdt[14] = F[17]-F[18] + crb.Q_rv # added Q_svc2
-        if cerebralVeinsOn==0:
-            dVdt[4] = F[4]-F[5] + F_lymphatic + crb.Q_svc # Renal vein shouldn't enter compartment 4, also svc2 is the lower 
-            dVdt[14] = F[17]-F[18]
 
         # Store values in the global arrays
         idx = np.searchsorted(t_eval, t)
@@ -1483,29 +882,6 @@ def solve(scaling, solve_config):
             store_UV[:, idx] = UV
             store_TBV[idx] = sum_v
             store_impulse[:, idx] = [para_resp, beta_resp, alpha_resp, alpha_respv, alphav_resp, alphav_respv]
-            store_crb[idx] = crb.Q_la
-            """ store_crb_Q_ic:
-            Q_f:    Cerebrospinal fluid formation rate
-            Q_0:    Cerebrospinal fluid outflow rate
-            Q:      Cerebral blood flow
-            Q_vs:   Venous sinus flow
-            Q_auto: average cerebral flow over crb_buffer_size [s]: np.mean(crb.Qbrain_buffer)
-            Q_la:   large cerebral artery flow
-            Q_pa:   pial arteriole flow
-            Q_car:  carotid artery flow
-            """
-            store_crb_Q_ic[:, idx] = crb.Q_f, crb.Q_0, crb.Q_la, crb.Q_vs, crb.Q_auto, crb.Q_pa, crb.Q_car # intracranial flows
-            store_crb_C[:, idx] = crb.C_vi, crb.C_ic, crb.C_pa # intracranial capacities
-            store_crb_R[:, idx] = crb.R_pa, crb.R_vs # intracranial resistances
-            store_crb_x[idx] = crb.x_aut # State variable of the autoregulation mechanism related to cerebral flow variations
-            store_crb_mca[:, idx] = crb.v_mca, crb.r_mca # Flow velocity in the middle cerebral artery
-
-            if cerebralVeinsOn==1:
-                store_crb_Q_j[:, idx] = crb.Q_c3, crb.Q_c2, crb.Q_c1, crb.Q_jr3, crb.Q_jr2, crb.Q_jr1, crb.Q_jl3, crb.Q_jl2, crb.Q_jl1 # jugular flows
-                store_crb_Q_v[:, idx] = crb.Q_vvr, crb.Q_vvl, crb.Q_vv # vertebral flows
-                store_crb_Q_out[:, idx] = crb.Q_lv, crb.Q_svc2, crb.Q_svc1, crb.Q_rv, crb.Q_azy2, crb.Q_out_net, crb.Q_tot # azygos, svc and out flows
-                store_crb_P[:, idx] = crb.P_v, crb.P_pa # Pressure in the cerebral veins and pial arterioles
-                store_crb_G[:, idx] = crb.G_jr3, crb.G_jr2, crb.G_jr1, crb.G_jl3, crb.G_jl2, crb.G_jl1, crb.G_c1, crb.G_cjr3, crb.G_cjr2, crb.G_cjl3, crb.G_cjl2, crb.G_c3 # jugular conductance
 
             # Autoregulation step I -> Get a constant array of the aortic arch and rap pressure of the most recent 4*S_GRAN seconds
             carotid_recep = 1 * scaling["carotid_r_switch"]
@@ -1515,54 +891,18 @@ def solve(scaling, solve_config):
                 if carotid_recep == 1:
                     abp_buffer[-1] = (store_P[0, idx] + store_P[2, idx])/2 #Note, NOW it does
                 rap_buffer[-1] = store_P[15, idx]
-                crb.Qbrain_buffer[-1] = store_crb[idx] # Cerebral blood flow buffer
             else: # otherwise, move the filter
                 if carotid_recep == 0:
                     abp_buffer = np.append(abp_buffer[1:], store_P[0, idx]) #Note, the baroreflex does not incorparate the baroreceptors in the carotid arteries 
                 if carotid_recep == 1:
                     abp_buffer = np.append(abp_buffer[1:], (store_P[0, idx] + store_P[2, idx])/2) #Note, NOW it does 
                 rap_buffer = np.append(rap_buffer[1:], store_P[15, idx])
-                crb.Qbrain_buffer = np.append(crb.Qbrain_buffer[1:], store_crb[idx]) # Cerebral blood flow buffer
             idx_check = idx
         store_t.append(t); # Check all calculated timesteps
-    
-        crb.Q_auto = np.mean(crb.Qbrain_buffer)
-        crb.dx_autdt = (1.0/crb.tau_aut)*(-crb.x_aut + crb.G_aut*(crb.Q_auto-crb.Q_n)/crb.Q_n) 
-        if carotidOn==0 and cerebralVeinsOn==1:
-            crb_ddt = [crb.dx_autdt, crb.dP_vP_icdt, crb.dP_paP_icreduceddt, crb.dP_icreduceddt, crb.dP_vsdt, crb.dP_jr3dt, crb.dP_jl3dt, crb.dP_jr2dt,
-            crb.dP_jl2dt, crb.dP_c3dt, crb.dP_c2dt, crb.dP_svc1dt, crb.dP_azydt, crb.dP_svcdt, crb.dP_vvdt]
-        if carotidOn==1 and cerebralVeinsOn==1:
-            crb_ddt = [crb.dx_autdt, crb.dP_vP_icdt, crb.dP_paP_icreduceddt, crb.dP_icreduceddt, crb.dP_vsdt, crb.dP_cardt, crb.dP_jr3dt, crb.dP_jl3dt, crb.dP_jr2dt,
-            crb.dP_jl2dt, crb.dP_c3dt, crb.dP_c2dt, crb.dP_svc1dt, crb.dP_azydt, crb.dP_svcdt, crb.dP_vvdt]
-        if carotidOn==0 and cerebralVeinsOn==0:
-            crb_ddt = [crb.dx_autdt, crb.dP_vP_icdt, crb.dP_paP_icreduceddt, crb.dP_icreduceddt, crb.dP_vsdt]
-        if carotidOn==1 and cerebralVeinsOn==0:
-            crb_ddt = [crb.dx_autdt, crb.dP_vP_icdt, crb.dP_paP_icreduceddt, crb.dP_icreduceddt, crb.dP_vsdt, crb.dP_cardt]
-        return np.concatenate([dVdt, crb_ddt])
+        
+        return dVdt
 
-    if cerebralVeinsOn==1:
-        y0 = np.zeros(37+carotidOn)
-        y0[27+carotidOn] = crb.P_jr3 # 3rd segment of the right jugular vein pressure
-        y0[28+carotidOn] = crb.P_jl3 # 3rd segment of the left jugular vein pressure
-        y0[29+carotidOn] = crb.P_jr2 # 2nd segment of the right jugular vein pressure
-        y0[30+carotidOn] = crb.P_jl2 # 2nd segment of the left jugular vein pressure
-        y0[31+carotidOn] = crb.P_c3 # pressure in upper segment of the collateral network
-        y0[32+carotidOn] = crb.P_c2 # pressure in middle segment of the collateral network
-        y0[33+carotidOn] = crb.P_svc1 # pressure in the superior segment of the superior vena cava
-        y0[34+carotidOn] = crb.P_azy # pressure in the azygos system
-        y0[35+carotidOn] = crb.P_svc # testing?
-        y0[36+carotidOn] = crb.P_vv # pressure in the vertebral vein
-    else:
-        y0 = np.zeros(27+carotidOn)
-    
-    y0[22] = crb.x_aut # autoregulation
-    y0[23] = crb.P_vP_ic # pressure of cerebal veins vi from equation (5)
-    y0[24] = crb.P_paP_ic # pressure of pial arterioles from equation (3)
-    y0[25] = crb.P_ic # intracranial pressure from equation (15)
-    y0[26] = crb.P_vs # cerebral sinus veins pressure
-    if carotidOn==1:
-        y0[27] = crb.P_car # pressure in the middle cerebral artery
-
+    y0 = np.zeros(22)
     y0[0:22] = V # volumes
         
     esse = esse_cerebral_NEW
@@ -1578,12 +918,7 @@ def solve(scaling, solve_config):
     store_BP_min = extremes_BP[:,2]
     store_finap = store_BP_max*1/3+2/3*store_BP_min
     HR_list = HR_list[:-2]
-
-    extremes_V_mca = utils.find_extremes_of_cardio_cycles(store_crb_mca[0], t_eval, t_cc_onset)
-    tmean_mca = extremes_V_mca[:,0]
-    store_V_mca_max = extremes_V_mca[:,1]
-    store_V_mca_min = extremes_V_mca[:,2]
-    Out_av.append([mean_t, map, store_finap, store_HR, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, store_impulse, store_crb_Q_ic, store_crb_mca])
+    Out_av.append([mean_t, map, store_finap, store_HR, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, store_P_muscle2, store_E, store_UV, store_TBV, store_impulse])
     Timer.stop()
 
     outputP = output9 = outputP_intra = output10 = outputPg = outputE = []

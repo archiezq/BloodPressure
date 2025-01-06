@@ -77,7 +77,7 @@ import numpy as np
 '''
 
 class _init_pars(object):
-    def __init__(self):
+    def __init__(self, scaling):
         # Create empty arrays for all the parameters
         elastance = np.zeros((2,22));
         resistance = np.zeros((6,22)); 
@@ -88,6 +88,32 @@ class _init_pars(object):
         Assign the resistances [ mmHg s ml^-1 ]
         
         Note, row 1, 2 and 3 are inflow and row 4, 5 and 6 are outflow resistance
+        """
+        resistance[:, 0]=[0.007, np.nan, np.nan, 0.003, 0.011, np.nan]       # Ascending Aorta - ADJUSTED 150621 5,0 from 0.03 to 0.011
+        resistance[:, 1]=[0.003, np.nan, np.nan, 0.014, np.nan, np.nan]        # Upper thoracic artery
+        resistance[:, 1]=[0.003, np.nan, np.nan, 0.014, 0.008, np.nan]        # Upper thoracic artery
+        resistance[:, 2]=[0.014, np.nan, np.nan, 4.9 * scaling["Rp"] * scaling["Rp_upper"], np.nan, np.nan]         # Upper body arteries
+        resistance[:, 3]=[4.9 * scaling["Rp"] * scaling["Rp_upper"], np.nan, np.nan, 0.11, np.nan, np.nan]          # Upper body veins
+        resistance[:, 4]=[0.11, np.nan, np.nan, 0.028, np.nan, np.nan]         # Super vena cava - ADJUSTED 150621 3, 4 from 0.06 to 0.028
+        resistance[:, 5]=[0.011, np.nan, np.nan, 0.01, np.nan, np.nan]        # Lower thoracic artery  - ADJUSTED 150621 0, 5 from 0.03 to 0.011
+        resistance[:, 6]=[0.01, np.nan, np.nan, 0.1, 0.03, 0.09]            # Abdominal aorta - ADJUSTED 150621 0, 5 from 0.03 to 0.01
+        resistance[:, 7]=[0.1, np.nan, np.nan, 4.1*scaling["Rp"], np.nan, np.nan]         # Renal arteries
+        resistance[:, 8]=[4.1*scaling["Rp"], np.nan, np.nan, 0.11, np.nan, np.nan]         # Renal veins
+        resistance[:, 9]=[0.03, np.nan, np.nan, 3*scaling["Rp"], np.nan, np.nan]          # Splanchnic arteries
+        resistance[:, 10]=[3*scaling["Rp"], np.nan, np.nan, 0.07, np.nan, np.nan]          # Splanchnic veins
+        resistance[:, 11]=[0.09, np.nan, np.nan, 4.5*scaling["Rp"], np.nan, np.nan]         # Lower body arteries
+        resistance[:, 12]=[4.5*scaling["Rp"], np.nan, np.nan, 0.1, np.nan, np.nan]          # Lower body veins
+        resistance[:, 13]=[0.11, 0.07, 0.1, 0.019, np.nan, np.nan]             # Abdominal veins
+        resistance[:, 14]=[0.019, np.nan, np.nan, 0.008, np.nan, np.nan]     # Inferior vena cava
+        resistance[:, 15]=[0.008, 0.028, np.nan, 0.006, np.nan, np.nan]       # Right atrium
+        resistance[:, 16]=[0.006, np.nan, np.nan, 0.003, np.nan, np.nan]     # Right ventricle
+        resistance[:, 17]=[0.003, np.nan, np.nan, 0.07*scaling["Rp"]*scaling["Rp_lungs"], np.nan, np.nan]      # Pulmonary artery
+        resistance[:, 18]=[0.07*scaling["Rp"]*scaling["Rp_lungs"], np.nan, np.nan, 0.006, np.nan, np.nan]       # Pulmonary veins
+        resistance[:, 19]=[0.006, np.nan, np.nan, 0.01, np.nan, np.nan]     # Left atrium
+        resistance[:, 20]=[0.01, np.nan, np.nan, 0.007, np.nan, np.nan]    # Left ventricle
+        resistance[:, 21]=[0.008,np.nan,np.nan,0.016,np.nan,np.nan];    # Carotid artery
+        resistance = np.array(resistance)*scaling["Global_R"]
+
         """
         resistance[:,0]=[0.007,np.nan,np.nan,0.003,0.011,np.nan];         # Ascending Aorta - ADJUSTED 150621 5,0 from 0.03 to 0.011
         #resistance[:,1]=[0.003,np.nan,np.nan,0.014,0.014,np.nan];        # Upper thoracic artery
@@ -113,8 +139,7 @@ class _init_pars(object):
         resistance[:,18]=[0.07,np.nan,np.nan,0.006,np.nan,np.nan];       # Pulmonary veins
         resistance[:,19]=[0.006,np.nan,np.nan,0.01,np.nan,np.nan];     # Left atrium
         resistance[:,20]=[0.01,np.nan,np.nan,0.007,np.nan,np.nan];    # Left ventricle
-
-        resistance[:,21]=[0.014,np.nan,np.nan,0.016,np.nan,np.nan];    # Carotid artery
+        """
         """
         Assign the elastances [ mmHg ml^-1 ]
         
@@ -137,15 +162,21 @@ class _init_pars(object):
         elastance[:,14]=[1/.5,np.nan];          # Inferior vena cava
         
         elastance[:,15]=[1/1.35,1/3.33];         # Right atrium
-        elastance[:,16]=[1/.77,1/19.29];        # Right ventricle
+        elastance[:,16]=[1/.77,1/19.29] * np.array([scaling["max_RV_E"], scaling["min_RV_E"]]);        # Right ventricle
         
         elastance[:,17]=[1/3.4,np.nan];         # Pulmonary artery
         elastance[:,18]=[1/9,np.nan];         # Pulmonary veins
         
         elastance[:,19]=[1/1.64,1/2];           # Left atrium
-        elastance[:,20]=[1/.4,1/9.69];          # Left ventricle
+        elastance[:,20]=[1/.4,1/9.69] * np.array([scaling["max_LV_E"], scaling["min_LV_E"]]);          # Left ventricle
 
         elastance[:,21]=[1/0.2,np.nan]         # Carotid artery
+
+        inputs = np.ones(22)
+        inputs[0:3] = inputs[5:8] = inputs[9] = inputs[11] = inputs[17] = scaling["E_arteries"]
+        inputs[3:5] = inputs[8] = inputs[10] = inputs[12:15] = inputs[18] = scaling["E_veins"]
+        elastance = np.array(elastance)*inputs # heart elastanceses are included,
+        
 
         """
         Assign the unstressed volumes [ ml ]
@@ -159,11 +190,11 @@ class _init_pars(object):
         uvolume[:,5]=[200];           # Lower thoracic artery - ADJUSTED 150621 from 16 to 200
         uvolume[:,6]=[10];           # Abodiminal aorta
         uvolume[:,7]=[20];           # Renal arteries
-        uvolume[:,8]=[30];            # Renal veins
+        uvolume[:,8]=[30] * scaling["venous_UV"];            # Renal veins
         uvolume[:,9]=[300];          # Splanchnic arteries
-        uvolume[:,10]=[1146];          # Splanchnic veins
+        uvolume[:,10]=[1146] * scaling["venous_UV"];          # Splanchnic veins
         uvolume[:,11]=[200];          # Lower body arteries
-        uvolume[:,12]=[716];          # Lower body veins
+        uvolume[:,12]=[716] * scaling["venous_UV"];          # Lower body veins
         uvolume[:,13]=[79];          # Abdominal veins
         uvolume[:,14]=[33];          # Inferior vena cava
         
@@ -176,8 +207,10 @@ class _init_pars(object):
         
         uvolume[:,21]=[10];         # Carotid artery, source?
 
+        uvolume = np.array(uvolume) * scaling["Global_UV"]
+
         """
-        Assign the vessel lengths [cm], (relative to the heart, CHECK THIS)
+        Assign the vessel lengths [cm], (NOT relative to the heart, CHECK THIS)
         """
         vessel_length[:,0]=[10];           # Ascending Aorta
         vessel_length[:,1]=[4.5];           # Upper thoracic artery

@@ -47,6 +47,3 @@ class _init_control(object):
         self.T_c=T_c;
         self.Temp=T_c+ 273.15;
         self.R_gas=62.3; # gasconstant
-
-
-
