@@ -115,7 +115,7 @@ from controlPars import _init_control # Get the control parameters loaded.
 planet=1
 fluidLoading=0
 StStest=1
-cerebralModelOn=0
+cerebralModelOn=1
 if cerebralModelOn==1: # Change these
     cerebralVeinsOn=0
     carotidOn=1

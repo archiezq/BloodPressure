@@ -539,7 +539,7 @@ variable_names = ['RRsgain (HP)', 'RRpgain (HP)', 'beta (UV)', 'alpha (UV)', 'be
 
 #%% IMPORT
 
-snellius = False # 
+snellius = True # 
 dataset = 2 # 0=NIVLAD, 1=PROHEALTH, 2=PROHEALTH_AVERAGE
 standup_n = 1 # n stand-up
 include_doppler = False # 0=No, 1=Yes
@@ -558,9 +558,9 @@ if snellius == False:
 
 if snellius == True:
     # Paths for when running on Snellius
-    csv_SBP = "/gpfs/home1/jvandesande/Preprocessed_data/Populations/mean_data_fallers_non_fallers_SBP.csv"
-    csv_DBP = "/gpfs/home1/jvandesande/Preprocessed_data/Populations/mean_data_fallers_non_fallers_DBP.csv"
-    csv_HR = "/gpfs/home1/jvandesande/Preprocessed_data/Populations/mean_data_fallers_non_fallers_HR.csv"
+    csv_SBP = "/gpfs/home6/qzhang/Qi_CODE/mean_data_fallers_non_fallers_SBP.csv"
+    csv_DBP = "/gpfs/home6/qzhang/Qi_CODE/mean_data_fallers_non_fallers_DBP.csv"
+    csv_HR = "/gpfs/home6/qzhang/Qi_CODE/mean_data_fallers_non_fallers_HR.csv"
 if dataset == 2 or snellius == True:
     if fallers == 1:
         data_SBP = pd.read_csv(csv_SBP)['Mean SBP Fallers (mmHg)']
