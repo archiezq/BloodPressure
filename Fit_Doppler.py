@@ -8,6 +8,7 @@ Created on 11-9-2024
 from scipy.io import loadmat
 import numpy as np
 import CVSIM_Brain as model
+import CVSIM_main as model2
 import matplotlib.pyplot as plt # Matplotlib is a comprehensive library for creating static, animated, and interactive visualizations in Python.
 import math
 from scipy.optimize import least_squares
@@ -36,7 +37,7 @@ class MyProblem(ElementwiseProblem):
         global iteration
         print("Iteration:" , iteration, "/", iter_tot)
         iteration = iteration+1
-        Out_av, Out_wave, Out_solver = model.solve2(model_input)
+        Out_av, Out_wave, Out_solver = model2.solve2(model_input)
         t_mean, BP_max, BP_min = Out_av[0][0], Out_av[0][4], Out_av[0][5]
 
         lip_minP, lip_minP_t = lin_interp(t_mean, BP_min, desired_interval)
@@ -64,7 +65,7 @@ class MyProblem_HR(ElementwiseProblem):
         global iteration
         print("Iteration:" , iteration, "/", iter_tot)
         iteration = iteration+1
-        Out_av, Out_wave, Out_solver = model.solve2(model_input)
+        Out_av, Out_wave, Out_solver = model2.solve2(model_input)
         t_mean, BP_max, BP_min, HR_list = Out_av[0][0], Out_av[0][4], Out_av[0][5], Out_av[0][6]
 
         lip_minP_t, lip_minP = lin_interp(t_mean, BP_min, desired_interval)
@@ -116,7 +117,7 @@ class MyProblem_HR_parallel(ElementwiseProblem):
         out["F"] = rmse_av
 
 def run_model_and_calculate_rmse(model_input):
-    Out_av, Out_wave, Out_solver = model.solve2(model_input)
+    Out_av, Out_wave, Out_solver = model2.solve2(model_input)
     t_mean, BP_max, BP_min, HR_list = Out_av[0][0], Out_av[0][4], Out_av[0][5], Out_av[0][6]
 
     lip_minP_t, lip_minP = lin_interp(t_mean, BP_min, desired_interval)
@@ -145,7 +146,7 @@ class MyProblem_BRAIN(ElementwiseProblem):
         global iteration
         print("Iteration:" , iteration, "/", iter_tot)
         iteration = iteration+1
-        Out_av, Out_wave, Out_solver = model.solve2(model_input)
+        Out_av, Out_wave, Out_solver = model2.solve2(model_input)
         print("size of Out_av", len(Out_av[0]))
         t_mean, BP_max, BP_min, HR_list, mca_t, mca_max, mca_min = Out_av[0][0], Out_av[0][4], Out_av[0][5], Out_av[0][6], Out_av[0][10], Out_av[0][11], Out_av[0][12]
 
@@ -177,7 +178,7 @@ class MyProblem_BRAIN(ElementwiseProblem):
         out["F"] = rmse_av
 
 def model_function(model_input):
-    Out_av, Out_wave, Out_solver = model.solve2(model_input)
+    Out_av, Out_wave, Out_solver = model2.solve2(model_input)
     t_mean, Finap, BP_max, BP_min = Out_av[0][0], Out_av[0][2], Out_av[0][4], Out_av[0][5]
     
     lip_times, new_values = lin_interp(t_mean, Finap, desired_interval)
@@ -189,7 +190,7 @@ def model_function(model_input):
     return residual
 
 def model_function2(model_input):
-    Out_av, Out_wave, Out_solver = model.solve2(model_input)
+    Out_av, Out_wave, Out_solver = model2.solve2(model_input)
     t_mean, BP_max, BP_min = Out_av[0][0], Out_av[0][4], Out_av[0][5]
     
     lip_minP = lin_interp(t_mean, BP_min, desired_interval)[1][start_index_model:index_end]
@@ -539,7 +540,7 @@ variable_names = ['RRsgain (HP)', 'RRpgain (HP)', 'beta (UV)', 'alpha (UV)', 'be
 
 #%% IMPORT
 
-snellius = True # 
+snellius = False # 
 dataset = 2 # 0=NIVLAD, 1=PROHEALTH, 2=PROHEALTH_AVERAGE
 standup_n = 1 # n stand-up
 include_doppler = False # 0=No, 1=Yes
@@ -712,7 +713,7 @@ if include_doppler == 1:
     find_index_of_time(lip_times_min_r, x_data_time_10Hz[-1] )]
 
     # Plotting
-    plt.figure(figsize=(10, 6), dpi=3000)
+    plt.figure(figsize=(10, 6), dpi=300)
     plt.plot(x_data_time_200Hz, x_data_cbfv_l, label=r'$v_{l}$', color='r', linewidth=0.1, linestyle="-")
     #plt.plot(peak_times_l, peak_velocities_l, "x", color='g', label='Peaks')
     #plt.plot(valley_times_l, valley_velocities_l, "x", color='y', label='Valleys')
@@ -726,7 +727,7 @@ if include_doppler == 1:
     plt.grid(True)
     plt.show()
 
-    plt.figure(figsize=(10, 6), dpi=3000)
+    plt.figure(figsize=(10, 6), dpi=300)
     plt.plot(x_data_time_200Hz, x_data_cbfv_r, label=r'$v_{r}$', color='r', linewidth=0.1, linestyle="-")
     #plt.plot(peak_times_r, peak_velocities_r, "x", color='g', label='Peaks')
     #plt.plot(valley_times_r, valley_velocities_r, "x", color='y', label='Valleys')
@@ -744,7 +745,7 @@ if include_doppler == 1:
     times_max, av_max_v = average_velocity_on_matching_times(lip_times_max_l, lip_max_mca_l, lip_times_max_r, lip_max_mca_r)
     times_min, av_min_v = average_velocity_on_matching_times(lip_times_min_l, lip_min_mca_l, lip_times_min_r, lip_min_mca_r)
 
-    plt.figure(figsize=(10, 6), dpi=3000)
+    plt.figure(figsize=(10, 6), dpi=300)
     plt.plot(lip_times_max_r, lip_max_mca_r, label='max R', color='g', linestyle="--", linewidth=0.6)
     plt.plot(lip_times_max_l, lip_max_mca_l, label='max L', color='y', linestyle="--", linewidth=0.6)
     plt.plot(times_max, av_max_v, label='max av', color='b', linestyle="--", linewidth=0.6)
@@ -756,7 +757,7 @@ if include_doppler == 1:
     plt.grid(True)
     plt.show()
 
-    plt.figure(figsize=(10, 6), dpi=3000)
+    plt.figure(figsize=(10, 6), dpi=300)
     plt.plot(lip_times_min_r, lip_min_mca_r, label='min R', color='g', linestyle="--", linewidth=0.6)
     plt.plot(lip_times_min_l, lip_min_mca_l, label='min L', color='y', linestyle="--", linewidth=0.6)
     plt.plot(times_min, av_min_v, label='min av', color='b', linestyle="--", linewidth=0.6)
@@ -816,7 +817,7 @@ if clean_HR_data_switch == True:
 
 #%% 
 # RUN GLOBAL OPTIMIZATION
-
+# offspring = 20, iterations = 20
 algorithm = ISRES(n_offsprings=offspring, rule=1.0 / 7.0, gamma=0.2, alpha=0.5)
 """ rule (Rule for Ranking):
     This parameter determines the trade-off between objective function ranking and constraint violation ranking. The value of rule influences how the algorithm ranks the solutions based on their objective function value and constraint violations.
@@ -972,7 +973,7 @@ print("\n Optimized parameters: ", opti)
 #%%
 #res.X = [ 0.88521808, 0.57638988, 1.23869191, 0.63037545, 1.04719004, 1.52528282, 1.38392606, 1.20657392, 0.81749262, 1.04000896, 0.77240868, 1.38909163, 1.1387788, 1.19498142, 0.36249268, 3.10236141, 1.00832986, 0.81639036, 1.08779616, 1.0769972, 1.3786385, 1.03288004, 1.14197793, 1.36268182, -0.08804694] 
 #Out_av, Out_wave, Out_solver = model.solve2(X)
-Out_av, Out_wave, Out_solver = model.solve2(res.X)
+Out_av, Out_wave, Out_solver = model2.solve2(res.X)
 
 #%% Index magic
 

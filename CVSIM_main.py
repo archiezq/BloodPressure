@@ -388,7 +388,7 @@ plot_switch = True
 if plot_switch == True:
     if cerebralModelOn==1:
         config = {  "cerebralModelOn": cerebralModelOn,
-                    "carotidOn": carotidOn,
+                    "carotidOn": carotidOn,             #
                     "data_time_10Hz": data_time_10Hz,
                     "data_MAP": data_MAP,
                     "data_HR": data_HR,
@@ -410,11 +410,11 @@ if plot_switch == True:
                     "store_TBV": store_TBV,
                     "store_E": store_E,
                     "scaling": scaling,
-                    "tmean_mca": tmean_mca,
-                    "store_crb_Q_ic": store_crb_Q_ic,
-                    "store_crb_mca": store_crb_mca,
-                    "store_V_mca_max": store_V_mca_max,
-                    "store_V_mca_min": store_V_mca_min,
+                    "tmean_mca": tmean_mca,             #
+                    "store_crb_Q_ic": store_crb_Q_ic,   #
+                    "store_crb_mca": store_crb_mca,     #
+                    "store_V_mca_max": store_V_mca_max, #
+                    "store_V_mca_min": store_V_mca_min, #
                     "y_solver": y_solver,
                     "t_solver": t_solver
                     }
