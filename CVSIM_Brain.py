@@ -914,9 +914,9 @@ def solve(scaling, solve_config):
             E[20] =ElvMIN
             E[16] =ErvMIN
 
-    # =============================================================================
-    #    Supine to standing test
-    # =============================================================================
+        # =============================================================================
+        #    Supine to standing test
+        # =============================================================================
 
         if StStest==1:
 
@@ -1032,23 +1032,24 @@ def solve(scaling, solve_config):
             crb.DeltaC_pa = crb.DeltaC_pa2
             crb.kC_pa = crb.DeltaC_pa2/4.0
             
-        # calculate intranical capacity equation (4)  yes
+        # calculate intranical capacity equation (4)  2000
         crb.C_ic = 1.0/(crb.k_E*crb.P_ic)
         
-        # calculate cerebral veins vi capacity from equation (6)  error? should be equation 9 or not?
+        # calculate cerebral veins vi capacity from equation (6)  error? 2015
         crb.C_vi = 1.0/(crb.k_ven*(crb.P_v - crb.P_ic - crb.P_v1)) # initial
         # crb.C_vi = crb.k_ven/(crb.P_v - crb.P_ic - crb.P_v1)
         
-        # calculate pial arteries capacity from equation (8) euation 17?
+        # calculate pial arteries capacity from equation (8) 2015
         crb.C_pa = (crb.C_pan-crb.DeltaC_pa/2.0 + (crb.C_pan + crb.DeltaC_pa/2.0)*np.exp(-crb.x_aut/crb.kC_pa))/(1.0+np.exp(-crb.x_aut/crb.kC_pa))
 
         # Formula uses dx_autdt from the previous timestep, but x_aut from the current timestep, is this correct?
-        crb.dC_padt = (-crb.DeltaC_pa*crb.dx_autdt)/(crb.kC_pa*(1+np.exp(-crb.x_aut/crb.kC_pa))) # a19??
+        # crb.dC_padt = (-crb.DeltaC_pa*crb.dx_autdt)/(crb.kC_pa*(1+np.exp(-crb.x_aut/crb.kC_pa))) # a19 2000
+        crb.dC_padt = (-crb.DeltaC_pa*np.exp(-crb.x_aut/crb.kC_pa)*crb.dx_autdt)/(crb.kC_pa*(1+np.exp(-crb.x_aut/crb.kC_pa))) # a19 2000
         
-        # calculate pial arterial resistance from equation (11)
-        crb.R_pa = crb.k_R*crb.C_pan**2/(((crb.P_pa-crb.P_ic)*crb.C_pa)**2) # a20
+        # calculate pial arterial resistance from equation (11) 2015
+        crb.R_pa = crb.k_R*crb.C_pan**2/(((crb.P_pa-crb.P_ic)*crb.C_pa)**2)
         
-        # calculate capillary pressure from equation (4)
+        # calculate capillary pressure from equation (4) 2015
         crb.P_c = (crb.P_v/crb.R_pv + crb.P_pa/(crb.R_pa/2.0) + 
                 crb.P_ic/crb.R_f)/(1.0/crb.R_pv + 1.0/(crb.R_pa/2.0) + 1.0/crb.R_f)
 
