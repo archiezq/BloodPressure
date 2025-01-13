@@ -26,7 +26,7 @@ Schematic overview of the 21-comaprtment model with:
 ---
 |x| -> the compartments, and -x- -> the flows
 ---
-                    ---         ---
+                   ---         ---
 ----4--------------|3|----3----|2|--------------2-----
 |                  ---         ---                   |
 ---                #0 Ascending Aorta                ---
@@ -110,6 +110,7 @@ def solve(scaling, solve_config):
     subjectPars = _init_pars(scaling); # Here the compartments parameters are assigned
     controlPars = _init_control(); # Here the control parameters are assigned
 
+    # 血压 (abp)、心率 (HR)、阻力 (R)、弹性 (E) 和时间 (t) 
     global delta_t, HP, tmax, T, resting_time, limit_R, limit_UV, HR, abp_hist,pp_hist, rap_hist,para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv
     global s_abp, abp_ma,rap_ma,s_rap,abp_pp,pp_abp, ErvMAX, ElvMAX, V_micro, t_eval, store_P, store_HR, sts_n_end, strainTime
     t_span = solve_config.get("t_span", [])
@@ -135,6 +136,7 @@ def solve(scaling, solve_config):
     class cerebralPars:
 
         # basal values of quantities related to the intracranial circuit (supine condition) Table 1
+        # 颅内回路相关量的基础值（仰卧位）表1
         # LvL, i am going to need to clarification on what these parameters are/represent
         C_pan = 0.205 # ml/mmHg, basal capacity of the pial arteries
         DeltaC_pa1 = 2.87 # ml/mmHg
@@ -144,14 +146,16 @@ def solve(scaling, solve_config):
         k_E = 0.077 # ml^-1, Intracranial elastance coefficient
         k_R = 13.1*10**3 # mmHg^3 s ml^-1
         k_ven = 0.155 # ml^-1
-        #-------
+
+        #==============
         #P_a = 100 # mmHg , Lvl, in the original paper fixed at 100 mmHg. We want to make this pulsatile by linking it to the 21-comp model
         P_car = 100 # mmHg, initial carotid pressure
         R_car = 0.008 # mmHg s ml^-1, carotid resistance
         """ R = 8*rho*L/(pi*r^4) = 8*3.5e-3*21.5e-2/(pi*(5.5e-3)^4) = 0.016 mmHg s ml^-1
         2 resistors in parallel: 1/Rt = 1/R1 + 1/R2 = 1/0.008 mmHg s ml^-1
         """
-        #-------
+
+        #==============
         P_ic = 9.5 # mmHg
         P_pa_initial = 58.9 # mmHg Lvl, is this a fixed value?
         P_pa = 58.9 
@@ -191,7 +195,7 @@ def solve(scaling, solve_config):
         "-------------------------------------------------------------------------------------------------------------"
 
         # Table 2. Basal values of pressures related to the jugular-vertebral circuit (supine condition)
-
+        # 压力与颈静脉-椎静脉环路相关的基础值（仰卧状态）表 2
         P_c3 = 6.00 # mmHg
         P_c2 = 5.85 # mmHg
         P_vv = 5.80 # mmHg
@@ -202,9 +206,11 @@ def solve(scaling, solve_config):
         P_azy = 5.50 # mmHg
         P_svc1 = 5.40 # mmHg
         P_svc = 5.20 # mmHg
-        #------
+
+        #=============
         P_cv_initial = 5.0 # mmHg #Lvl, fixed CVP value that needs to be linked to the 21-comp model 
-        #------
+        
+        #=============
         P_j3ext = 0.0
         P_j2ext = 0.0
         P_j1ext = -6.5 # mmHg, avg thoracic pressure taken from source (18) as suggested by authors
@@ -214,7 +220,7 @@ def solve(scaling, solve_config):
         "---------------------------- initial flows ----------------------------------------"
 
         # Table 3. Basal values of flows related to the jugular-vertebral circuit (supine condition)
-
+        # 与颈静脉-椎静脉环路相关的血流基础值（仰卧状态）
         Q_car = 12.5 # ml/s
         Q = 12.5 # ml/s
         Q_la = 12.5 # ml/s ?
@@ -240,7 +246,7 @@ def solve(scaling, solve_config):
         "----------------------------------------- capacities ----------------------------------------------------"
 
         # capacities related to the jugular-vertrebral circuit (supine condition) Table 4
-
+        # 与颈椎静脉环路相关的容量（仰卧位）表 4
         C_vs = 0.5 # ml/mmHg
         C_jr3 =  1.0 # ml/mmHg
         C_jl3 =  1.0 # ml/mmHg
@@ -283,6 +289,7 @@ def solve(scaling, solve_config):
         "------------------------------------conductance calculations------------------------------------------"
 
         # vessel conductances (calculated using pressure-flow relationships)
+        # 血管电导（使用压力-流量关系计算）
 
         G_cjr3 = Q_cjr3/(P_c3 - P_jr3)
         G_cjr2 = Q_cjr2/(P_c2 - P_jr2)
@@ -436,6 +443,7 @@ def solve(scaling, solve_config):
     #reflexPars.PP_setp = sum(data_SBP[sit_index_10Hz:stand_index_10Hz]-data_DBP[sit_index_10Hz:stand_index_10Hz])/(stand_index_10Hz-sit_index_10Hz)
 
     """
+    # =======================================begin here============================
     reflexPars.ABP_setp = ABP_setp*scaling["ABP_setp"]
     #print(reflexPars.ABP_setp)
     crb.P_a_n = reflexPars.ABP_setp
@@ -587,7 +595,9 @@ def solve(scaling, solve_config):
     global grav_switch, sliding_window_size, baro_buffer, crb_buffer_size
     baro_buffer = 4 # int
     crb_buffer_size = 2 # seconds, ORIGINAL
-    grav_switch = 1
+
+    # ------------------------ different --------------------------
+    grav_switch = 1 
 
     """
     Assign the parameters
@@ -846,6 +856,9 @@ def solve(scaling, solve_config):
         if t>1: # after 1 second; check the volumes
             V[13]=V[13]+TBV-sum_v+controlPars.V_micro-V_micro
         
+
+
+        # ----------------------- same part --------------------------
         """ The baroreflex and CPReflex """
         t_rf = t - t_rf_onset # time in refelx function
         if t_rf >= reflexPars.S_GRAN and (ABRreflexOn==1 or CPRreflexOn==1): # Call every 0.0625 s
@@ -1007,6 +1020,8 @@ def solve(scaling, solve_config):
         # when I calculate Q, Q_n = 12.5 causes the model to fail during the supine to standing test. 
         """
 
+        # ------------------------ Different parts ------------------------
+        
         # calculate autoregulation
         #crb.x_aut += crb.dx_autdt*crb.dt 
         # conditions for vasoconstriction/vasodilation
@@ -1017,20 +1032,21 @@ def solve(scaling, solve_config):
             crb.DeltaC_pa = crb.DeltaC_pa2
             crb.kC_pa = crb.DeltaC_pa2/4.0
             
-        # calculate intranical capacity
+        # calculate intranical capacity equation (4)  yes
         crb.C_ic = 1.0/(crb.k_E*crb.P_ic)
         
-        # calculate cerebral veins vi capacity from equation (6)
-        crb.C_vi = 1.0/(crb.k_ven*(crb.P_v - crb.P_ic - crb.P_v1))
+        # calculate cerebral veins vi capacity from equation (6)  error? should be equation 9 or not?
+        crb.C_vi = 1.0/(crb.k_ven*(crb.P_v - crb.P_ic - crb.P_v1)) # initial
+        # crb.C_vi = crb.k_ven/(crb.P_v - crb.P_ic - crb.P_v1)
         
-        # calculate pial arteries capacity from equation (8)
+        # calculate pial arteries capacity from equation (8) euation 17?
         crb.C_pa = (crb.C_pan-crb.DeltaC_pa/2.0 + (crb.C_pan + crb.DeltaC_pa/2.0)*np.exp(-crb.x_aut/crb.kC_pa))/(1.0+np.exp(-crb.x_aut/crb.kC_pa))
 
         # Formula uses dx_autdt from the previous timestep, but x_aut from the current timestep, is this correct?
-        crb.dC_padt = (-crb.DeltaC_pa*crb.dx_autdt)/(crb.kC_pa*(1+np.exp(-crb.x_aut/crb.kC_pa)))
+        crb.dC_padt = (-crb.DeltaC_pa*crb.dx_autdt)/(crb.kC_pa*(1+np.exp(-crb.x_aut/crb.kC_pa))) # a19??
         
         # calculate pial arterial resistance from equation (11)
-        crb.R_pa = crb.k_R*crb.C_pan**2/(((crb.P_pa-crb.P_ic)*crb.C_pa)**2)
+        crb.R_pa = crb.k_R*crb.C_pan**2/(((crb.P_pa-crb.P_ic)*crb.C_pa)**2) # a20
         
         # calculate capillary pressure from equation (4)
         crb.P_c = (crb.P_v/crb.R_pv + crb.P_pa/(crb.R_pa/2.0) + 
@@ -1150,19 +1166,23 @@ def solve(scaling, solve_config):
                 crb.G_jr1 = 0
 
             "-------------------------------jugular-vertebral flows---------------------------------------------------------"
-
+            # 颈静脉-椎静脉血流
+            
             # calculating flow in the collateral segments 
+            # 侧支血管段
             crb.Q_c3 = crb.G_c3*(crb.P_vs - crb.P_c3)
             crb.Q_c2 = crb.G_c2*(crb.P_c3 - crb.P_c2)
             crb.Q_c1 = crb.G_c1*(crb.P_c2 - P[4]) # Qc1 Flow in the lower segment of the collateral network, does this flow into C[4]?
 
             # calculating flow in the anastomotic connections
+            # 吻合连接
             crb.Q_cjr3 = crb.G_cjr3*(crb.P_c3 - crb.P_jr3)
             crb.Q_cjr2 = crb.G_cjr2*(crb.P_c2 - crb.P_jr2)
             crb.Q_cjl3 = crb.G_cjl3*(crb.P_c3 - crb.P_jl3)
             crb.Q_cjl2 = crb.G_cjl2*(crb.P_c2 - crb.P_jl2)
 
             # calculating flow in the jugular segments
+            # 颈静脉节段
             crb.Q_jr3 = crb.G_jr3*(crb.P_vs - crb.P_jr3) 
             crb.Q_jl3 = crb.G_jl3*(crb.P_vs - crb.P_jl3) 
             crb.Q_jr2 = crb.G_jr2*(crb.P_jr3 - crb.P_jr2)
@@ -1171,15 +1191,18 @@ def solve(scaling, solve_config):
             crb.Q_jl1 = crb.G_jl1*(crb.P_jl2 - crb.P_svc1)
 
             # calculating flow in the vertebral veins
+            # 椎静脉
             crb.Q_vv = crb.G_vvr*(crb.P_vs - crb.P_vv) + crb.G_vvl*(crb.P_vs - crb.P_vv)
             crb.Q_vvr = crb.G_vvr*(crb.P_vs - crb.P_vv)
             crb.Q_vvl = crb.G_vvl*(crb.P_vs - crb.P_vv)
 
             # Calculating flow in the superior vena cava (superior tract)
+            # 上腔静脉
             #crb.Q_svc1 = crb.G_jr1*(crb.P_jr2 - crb.P_svc1) + crb.G_jl1*(crb.P_jl2 - crb.P_svc1) # why?
             crb.Q_svc1 = crb.Q_jr1 + crb.Q_jl1 # doesn't use P[4]
 
             # Calculating flow in the renal vein
+            # 肾静脉
             crb.Q_rv = crb.G_rv*(crb.P_vv - P[14]) # new, P[4] -> P[14]
 
             # Calculating outflow in the model
@@ -1275,7 +1298,6 @@ def solve(scaling, solve_config):
         if grav_switch == 0: 
 
             ### ORIGINAL ###
-            #------------------------------------------------------#
             #---------- Left side of the heart --------------------#
             F = np.zeros(24)
             if P[20]>P[0]+Pgrav[0]:

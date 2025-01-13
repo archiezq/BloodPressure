@@ -130,6 +130,7 @@ def solve(scaling, solve_config):
     fluidLoading = solve_config.get("fluidLoading", 0)
     ABP_setp = solve_config.get("ABP_setp", [])
 
+    # =============================================================================
     # Get all the pars from the different parameters values
     """
     sit_index = utils.find_index_of_time(data_time, sts0)
@@ -147,12 +148,12 @@ def solve(scaling, solve_config):
     # Initial settings; Heart rate, Intrathoracic pressure, Total blood volume and Unstressed blood volume.
     # =============================================================================
     
-    HR = controlPars.hr*scaling["HR_t0"]
+    HR = controlPars.hr*scaling["HR_t0"]    #心率
     HP=60/HR
-    RR=controlPars.RR
+    RR=controlPars.RR   #呼吸频率
     #P_intra_t0=controlPars.P_intra_t0;
-    P_intra_t0=-4
-    rrp=60/controlPars.RR; # Respiratory rate period
+    P_intra_t0=-4   #胸内压
+    rrp=60/controlPars.RR; # Respiratory rate period 呼吸频率周期
     #rrp=0
     P_sts = 15 * scaling["STS_pressure"] # mmHg
     #P_sts = 43 * scaling["STS_pressure"] # mmHg Source?

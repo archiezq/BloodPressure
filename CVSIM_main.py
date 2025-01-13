@@ -38,7 +38,7 @@ print('Healthy adult sim run')
 planet=1
 fluidLoading=0
 StStest=1
-cerebralModelOn=0 # 1 = cerebral model on, 0 = cerebral model off
+cerebralModelOn=1 # 1 = cerebral model on, 0 = cerebral model off
 if cerebralModelOn==1: # Change these
     cerebralVeinsOn=0
     carotidOn=1
@@ -178,6 +178,10 @@ if dataset == 2:
 sit_index = utils.find_index_of_time(data_time, sts0)
 stand_index = utils.find_index_of_time(data_time, sts1)
 ABP_setp = sum(data_BP[sit_index:stand_index])/(stand_index-sit_index)
+
+
+
+
 #%%
 # =============================================================================
 # Assign the control parameters to set for how long you want to run the simulation

@@ -92,8 +92,10 @@ class _init_pars(object):
         resistance[:, 0]=[0.007, np.nan, np.nan, 0.003, 0.011, np.nan]       # Ascending Aorta - ADJUSTED 150621 5,0 from 0.03 to 0.011
         resistance[:, 1]=[0.003, np.nan, np.nan, 0.014, np.nan, np.nan]        # Upper thoracic artery
         resistance[:, 1]=[0.003, np.nan, np.nan, 0.014, 0.008, np.nan]        # Upper thoracic artery
+        
         resistance[:, 2]=[0.014, np.nan, np.nan, 4.9 * scaling["Rp"] * scaling["Rp_upper"], np.nan, np.nan]         # Upper body arteries
         resistance[:, 3]=[4.9 * scaling["Rp"] * scaling["Rp_upper"], np.nan, np.nan, 0.11, np.nan, np.nan]          # Upper body veins
+        
         resistance[:, 4]=[0.11, np.nan, np.nan, 0.028, np.nan, np.nan]         # Super vena cava - ADJUSTED 150621 3, 4 from 0.06 to 0.028
         resistance[:, 5]=[0.011, np.nan, np.nan, 0.01, np.nan, np.nan]        # Lower thoracic artery  - ADJUSTED 150621 0, 5 from 0.03 to 0.011
         resistance[:, 6]=[0.01, np.nan, np.nan, 0.1, 0.03, 0.09]            # Abdominal aorta - ADJUSTED 150621 0, 5 from 0.03 to 0.01
@@ -147,8 +149,10 @@ class _init_pars(object):
         """
         elastance[:,0]=[1/.28,np.nan];           # Ascending Aorta
         elastance[:,1]=[1/.13,np.nan];           # Upper thoracic artery
+        
         elastance[:,2]=[1/.2,np.nan];           # Upper body arteries- ADJUSTED 150621 from .42 to .2
         elastance[:,3]=[1/7,np.nan];            # Upper body veins - ADJUSTED 150621 from 11 to 7
+        
         elastance[:,4]=[1/1.3,np.nan];            # Super vena cava
         elastance[:,5]=[1/.1,np.nan];           # Lower thoracic artery
         elastance[:,6]=[1/.1,np.nan];           # Abodiminal aorta
@@ -184,8 +188,10 @@ class _init_pars(object):
         """
         uvolume[:,0]=[21];           # Ascending Aorta
         uvolume[:,1]=[5];           # Upper thoracic artery
+        
         uvolume[:,2]=[16];           # Upper body arteries - ADJUSTED 150621 from 200 to 16
         uvolume[:,3]=[645];            # Upper body veins
+        
         uvolume[:,4]=[16];            # Super vena cava
         uvolume[:,5]=[200];           # Lower thoracic artery - ADJUSTED 150621 from 16 to 200
         uvolume[:,6]=[10];           # Abodiminal aorta
@@ -214,8 +220,10 @@ class _init_pars(object):
         """
         vessel_length[:,0]=[10];           # Ascending Aorta
         vessel_length[:,1]=[4.5];           # Upper thoracic artery
+        
         vessel_length[:,2]=[20];           # Upper body arteries
         vessel_length[:,3]=[20];            # Upper body veins
+        
         vessel_length[:,4]=[4.5];            # Super vena cava
         vessel_length[:,5]=[16];           # Lower thoracic artery
         vessel_length[:,6]=[14.5];           # Abodiminal aorta
