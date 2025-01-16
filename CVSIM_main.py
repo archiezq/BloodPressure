@@ -420,7 +420,8 @@ if plot_switch == True:
                     "store_V_mca_max": store_V_mca_max, #
                     "store_V_mca_min": store_V_mca_min, #
                     "y_solver": y_solver,
-                    "t_solver": t_solver
+                    "t_solver": t_solver,
+                    # "C_t_total": C_t_total
                     }
     if cerebralModelOn==0:
         config = {  "cerebralModelOn": cerebralModelOn,
@@ -447,6 +448,7 @@ if plot_switch == True:
                     "scaling": scaling,
                     "y_solver": y_solver,
                     "t_solver": t_solver
+                    # "C_t_total": C_t_total
                     }
 
     cvplt(config)

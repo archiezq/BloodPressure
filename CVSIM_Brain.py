@@ -112,7 +112,8 @@ def solve(scaling, solve_config):
 
     # 血压 (abp)、心率 (HR)、阻力 (R)、弹性 (E) 和时间 (t) 
     global delta_t, HP, tmax, T, resting_time, limit_R, limit_UV, HR, abp_hist,pp_hist, rap_hist,para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv
-    global s_abp, abp_ma,rap_ma,s_rap,abp_pp,pp_abp, ErvMAX, ElvMAX, V_micro, t_eval, store_P, store_HR, sts_n_end, strainTime
+    global oxy_switch, s_abp, abp_ma,rap_ma,s_rap,abp_pp,pp_abp, ErvMAX, ElvMAX, V_micro, t_eval, store_P, store_HR, sts_n_end, strainTime
+    
     t_span = solve_config.get("t_span", [])
     T = solve_config.get("T", [])
     t_eval = solve_config.get("t_eval", [])
@@ -131,6 +132,7 @@ def solve(scaling, solve_config):
     CPRreflexOn = solve_config.get("CPRreflexOn", [])
     fluidLoading = solve_config.get("fluidLoading", [])
     ABP_setp = solve_config.get("ABP_setp", [])
+    oxy_switch = 1
     
     #======= define the cerebral parameters =======#
     class cerebralPars:
@@ -344,7 +346,7 @@ def solve(scaling, solve_config):
         Q_flist = []
         Q_0list = []
         R_vslist = []
-        R_palist = []
+        # R_palist = []
         C_iclist = []
         G_jr3list = []
         G_jr2list = []
@@ -363,7 +365,7 @@ def solve(scaling, solve_config):
         C_iclist = []
         C_vilist = []
         C_palist = []
-        R_palist = []
+        # R_palist = []
         x_autlist = []
         Q_flist = []
         Q_0list = []
@@ -491,6 +493,21 @@ def solve(scaling, solve_config):
     H = controlPars.H
     controlPars.tbv = 70/(np.sqrt((BW/(22*H**2)))) * BW # Lemmens-Bernstein-Brodsky Equation
     TBV=controlPars.tbv*scaling["v_ratio"]
+
+    global C_oxygen, k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, phi_c, phi_t, C_t, C_c
+    # Oxygen        
+    C_oxygen = 0.35 # ml O2/ml blood
+    k_c = 4.2*10**(-14)
+    h_c = 1*10**(-6)
+    s_v = 4.74 *10**5
+    alpha_b = 3.11*10**(-5) # m3 O2 / mmHg*m3 blood
+    alpha_t = 3.95*10**(-5) # m3 O2 / mmHg*m3 blood
+    M_max = 2.4*10**(-4) # m3 O2 / mmHg*m3 blood
+    C_50 = 2.6*10**(-5) # m3 O2 / mmHg*m3 blood
+    phi_c = 0.011303
+    phi_t = 0.988697
+    C_t = 3.5*10**(-5) # m3 O2 / mmHg*m3 blood
+    C_c = 5.5*10**(-5) # m3 O2 / mmHg*m3 blood
     
     # Nadler eq.:
     """
@@ -597,7 +614,7 @@ def solve(scaling, solve_config):
     crb_buffer_size = 2 # seconds, ORIGINAL
 
     # ------------------------ different --------------------------
-    grav_switch = 1 
+    grav_switch = 0
 
     """
     Assign the parameters
@@ -701,7 +718,16 @@ def solve(scaling, solve_config):
         alpha_respv_new=np.sum(np.flip(abp_hist,0)* reflexPars.v) # pp_hist changed to abp_hist
         alphav_resp_new=np.sum(np.flip(rap_hist,0)* reflexPars.cpa)
         alphav_respv_new=np.sum(np.flip(rap_hist,0)* reflexPars.cpv)
-    
+
+    def dC_dt(C_t):
+        global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50, C_c
+        # diffusion
+        diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
+        # consumption
+        consumption = (M_max * C_t) / (C_t + C_50)
+        
+        return diffusion + consumption
+
     def ABRreflexDef():
         global HP, HR, ErvMAX, ElvMAX
         if HR==0:
@@ -820,7 +846,8 @@ def solve(scaling, solve_config):
         global hydroP, alpha_tilt, Tav, Tsa, Tsv, P_muscle_thorax, P_muscle_abdom, P_muscle_legs, P_intra, F_micro_lower, F_micro_upper, F_lymphatic
         global cc_switch, t_rf, t_rf_onset, t_cc, t_cc_onset, t_resp_onset, impulse
         global para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv, idx_check
-        
+        global oxy_switch, k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50, C_t, C_c
+
         """ Update values """
         V = x_esse[:22]  # Volumes of cardiovascular model
         V_micro = V[-1] # V_micro
@@ -842,8 +869,13 @@ def solve(scaling, solve_config):
             crb.P_azy = x_esse[34+carotidOn] # pressure in the azygos system
             crb.P_svc = x_esse[35+carotidOn] # testing?
             crb.P_vv = x_esse[36+carotidOn] # pressure in the vertebral vein
+        if oxy_switch == 1 and cerebralVeinsOn==1:
+            C_oxy = x_esse[37+carotidOn] # oxygen concentration in the brain
+        if oxy_switch == 1 and cerebralVeinsOn==0:
+            C_oxy = x_esse[27+carotidOn]
         crb.P_v = crb.P_vP_ic + crb.P_ic # venous pressure ?
         crb.P_pa = crb.P_paP_ic + crb.P_ic # pial arterioles pressure
+
 
         """ Make sure there is no volume added or removed as a result of the integration """
         sum_v = np.sum(V[:-1]) 
@@ -879,6 +911,25 @@ def solve(scaling, solve_config):
                 alphav_resp = (alphav_resp_new-alphav_resp_old)*t_rf/reflexPars.S_GRAN+alphav_resp_old
                 alphav_respv = (alphav_respv_new-alphav_respv_old)*t_rf/reflexPars.S_GRAN+alphav_respv_old
                 CPRreflexDef()
+        
+        if oxy_switch == 1:
+            """ Oxygen delivery """
+            """
+            # Oxygen delivery to the brai
+            t_segments = np.arange(0, t, 3)  # 时间段起点数组
+            t_eval_per_segment = np.linspace(0, 3, 100) # 每段内的评估时间点
+            C_t_total = []  # storage the concentration 
+            time_total = [] 
+
+            for t_start in t_segments:
+                # 每段时间的模拟 simulation for every period
+                t_span = (t_start, t_start + 3)
+                solution = solve_ivp(dC_dt, (0, 3), [C_t], t_eval=t_eval_per_segment)
+                # 累加浓度, concentration
+                C_t_total.extend(solution.y[0])
+            """
+            dcdt = q_in*C_oxy_inlet + dC_dt(C_oxy)
+            #print(dcdt)
                 
         """ Cardiac Cycle (CC) """
         t_cc = t - t_cc_onset[-1] # Time in cardiac cycle
@@ -1561,10 +1612,10 @@ def solve(scaling, solve_config):
             crb_ddt = [crb.dx_autdt, crb.dP_vP_icdt, crb.dP_paP_icreduceddt, crb.dP_icreduceddt, crb.dP_vsdt]
         if carotidOn==1 and cerebralVeinsOn==0:
             crb_ddt = [crb.dx_autdt, crb.dP_vP_icdt, crb.dP_paP_icreduceddt, crb.dP_icreduceddt, crb.dP_vsdt, crb.dP_cardt]
-        return np.concatenate([dVdt, crb_ddt])
+        return np.concatenate([dVdt, crb_ddt, [dcdt]])
 
     if cerebralVeinsOn==1:
-        y0 = np.zeros(37+carotidOn)
+        y0 = np.zeros(37+carotidOn + oxy_switch)
         y0[27+carotidOn] = crb.P_jr3 # 3rd segment of the right jugular vein pressure
         y0[28+carotidOn] = crb.P_jl3 # 3rd segment of the left jugular vein pressure
         y0[29+carotidOn] = crb.P_jr2 # 2nd segment of the right jugular vein pressure
@@ -1575,8 +1626,10 @@ def solve(scaling, solve_config):
         y0[34+carotidOn] = crb.P_azy # pressure in the azygos system
         y0[35+carotidOn] = crb.P_svc # testing?
         y0[36+carotidOn] = crb.P_vv # pressure in the vertebral vein
+        if oxy_switch == 1:
+            y0[37+carotidOn] = C_c # oxygen concentration in the blood at t=0
     else:
-        y0 = np.zeros(27+carotidOn)
+        y0 = np.zeros(27+carotidOn + oxy_switch)
     
     y0[22] = crb.x_aut # autoregulation
     y0[23] = crb.P_vP_ic # pressure of cerebal veins vi from equation (5)
@@ -1585,8 +1638,11 @@ def solve(scaling, solve_config):
     y0[26] = crb.P_vs # cerebral sinus veins pressure
     if carotidOn==1:
         y0[27] = crb.P_car # pressure in the middle cerebral artery
+    if oxy_switch == 1:
+        y0[27+carotidOn] = C_c # oxygen concentration in the blood at t=0
 
     y0[0:22] = V # volumes
+
         
     esse = esse_cerebral_NEW
     #solution = solve_ivp(esse_test, t_span, y0, t_eval=t_eval, method='RK45')

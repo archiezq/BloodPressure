@@ -25,6 +25,7 @@ def CVSIM_plot(config):
         scaling = config.get("scaling", [])
         y_solver = config.get("y_solver", [])
         t_solver = config.get("t_solver", [])
+        C_t_total = config.get("C_t_total", [])
 
         import matplotlib.pyplot as plt
         import CVSIM_utils as utils
@@ -275,6 +276,15 @@ def CVSIM_plot(config):
                 plt.title(r'Plot of middle cerebral artery radius ($r_{MCA}$) vs time')
                 plt.legend(loc='upper left')
                 plt.grid(True)
+                plt.show()
+
+                # oxygen saturation
+                plt.plot(t_eval_trans[9000:12000], C_t_total, label='C_t (Oxygen Concentration in Tissue)')
+                plt.xlabel('Time (s)')
+                plt.ylabel('C_t')
+                plt.title('Oxygen Concentration Over Time with Periodic Reset')
+                plt.legend()
+                plt.grid()
                 plt.show()
 
                 if carotidOn==1:
