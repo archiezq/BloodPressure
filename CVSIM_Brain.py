@@ -645,7 +645,9 @@ def solve(scaling, solve_config):
     
     global abp_temp, cvp_temp, co_temp, hr_temp, finap_temp, impulse, Out_av, Out_wave, store_t, store_P_muscle, store_P_intra, HR_list
     global store_E, store_crb, store_BP_min, store_BP_max, store_UV,store_P_muscle2
-    global store_crb_Q_ic, store_crb_Q_j, store_crb_Q_v, store_crb_Q_out, store_crb_P, store_crb_C, store_crb_R, store_crb_G, store_crb_x, store_crb_mca, store_impulse, store_TBV
+    global store_crb_Q_ic, store_crb_Q_j, store_crb_Q_v, store_crb_Q_out, store_crb_P, store_crb_C, store_crb_R, store_crb_G, store_crb_x, store_crb_mca, store_impulse, store_TBV, store_dcdt
+    global store_oxygen
+    
     # Initialize arrays to store the values
     store_t=[0.0]
     store_BP_min=[]
@@ -675,6 +677,7 @@ def solve(scaling, solve_config):
     store_crb_G = np.zeros((12, len(t_eval))) # store jugular conductances
     store_crb_x = np.zeros(len(t_eval)) # State variable of the autoregulation mechanism related to cerebral flow variations
     store_crb_mca = np.zeros((2, len(t_eval))) # store velocity and radius of middle cerebral artery
+    store_oxygen = np.zeros((2, len(t_eval))) # store oxygen content in the blood
     crb.Qbrain_buffer = np.full(int(crb_buffer_size/T), crb.Q_n)
 
     global abp_buffer, rap_buffer, abp_ma, abp_pp, rap_ma, abp_hist, rap_hist, abp_hist, rap_hist, pp_hist
@@ -928,8 +931,9 @@ def solve(scaling, solve_config):
                 # 累加浓度, concentration
                 C_t_total.extend(solution.y[0])
             """
-            dcdt = q_in*C_oxy_inlet + dC_dt(C_oxy)
-            #print(dcdt)
+            # dcdt = q_in*C_oxy_inlet + dC_dt(C_oxy)
+            dcdt = dC_dt(C_oxy)
+            # print(dcdt)
                 
         """ Cardiac Cycle (CC) """
         t_cc = t - t_cc_onset[-1] # Time in cardiac cycle
@@ -1573,6 +1577,7 @@ def solve(scaling, solve_config):
             store_crb_R[:, idx] = crb.R_pa, crb.R_vs # intracranial resistances
             store_crb_x[idx] = crb.x_aut # State variable of the autoregulation mechanism related to cerebral flow variations
             store_crb_mca[:, idx] = crb.v_mca, crb.r_mca # Flow velocity in the middle cerebral artery
+            store_oxygen[:, idx] = dcdt
 
             if cerebralVeinsOn==1:
                 store_crb_Q_j[:, idx] = crb.Q_c3, crb.Q_c2, crb.Q_c1, crb.Q_jr3, crb.Q_jr2, crb.Q_jr1, crb.Q_jl3, crb.Q_jl2, crb.Q_jl1 # jugular flows
@@ -1662,7 +1667,9 @@ def solve(scaling, solve_config):
     tmean_mca = extremes_V_mca[:,0]
     store_V_mca_max = extremes_V_mca[:,1]
     store_V_mca_min = extremes_V_mca[:,2]
-    Out_av.append([mean_t, map, store_finap, store_HR, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, store_impulse, store_crb_Q_ic, store_crb_mca])
+    Out_av.append([mean_t, map, store_finap, store_HR, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, 
+                   store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, 
+                   store_impulse, store_crb_Q_ic, store_crb_mca, store_oxygen])
     Timer.stop()
 
     outputP = output9 = outputP_intra = output10 = outputPg = outputE = []

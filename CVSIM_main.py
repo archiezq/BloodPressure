@@ -48,6 +48,7 @@ else: # Do not change these
 ABRreflexOn=1; # ABR reflex
 CPRreflexOn=1; # CPR reflex
 micro_switch = 1 # 1 = microcirculation on, 0 = microcirculation off
+oxy_switch = 1
 bleedingOn,startTimeBleeding,totalTimeBleeding,bleedingVolume=0,150,180,2000;#  time in seconds
 fillingOn,totalTimeFilling,fillingVolume=0,200,1000;#  time in seconds
 
@@ -372,11 +373,13 @@ def run_solve2():
     Out_av, Out_wave, Out_solver = solve2(inp_opti)
     global t_solver, y_solver
     global t_mean, MAP, Finap, HR_model, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, store_impulse, store_finap, store_HR, store_crb_Q_ic, store_crb_mca
+    global store_oxygen
+    
     if cerebralModelOn==1:
-        t_mean, MAP, Finap, HR_model, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, store_impulse, store_crb_Q_ic, store_crb_mca = Out_av[0]
+        t_mean, MAP, Finap, HR_model, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, store_impulse, store_crb_Q_ic, store_crb_mca, store_oxygen = Out_av[0]
     if cerebralModelOn==0:
         t_mean, MAP, Finap, HR_model, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, store_P_muscle2, store_E, store_UV, store_TBV, store_impulse = Out_av[0]
-    t, wave_f, alpha_tilt, p_intra, p_muscle, p_grav, Elas = Out_wave[0]
+        t, wave_f, alpha_tilt, p_intra, p_muscle, p_grav, Elas = Out_wave[0]
     t_solver, y_solver = Out_solver
     return
 
@@ -421,7 +424,8 @@ if plot_switch == True:
                     "store_V_mca_min": store_V_mca_min, #
                     "y_solver": y_solver,
                     "t_solver": t_solver,
-                    # "C_t_total": C_t_total
+                    "oxy_switch": oxy_switch,
+                    "store_oxygen": store_oxygen
                     }
     if cerebralModelOn==0:
         config = {  "cerebralModelOn": cerebralModelOn,
@@ -448,7 +452,6 @@ if plot_switch == True:
                     "scaling": scaling,
                     "y_solver": y_solver,
                     "t_solver": t_solver
-                    # "C_t_total": C_t_total
                     }
 
     cvplt(config)

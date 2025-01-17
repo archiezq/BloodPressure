@@ -25,7 +25,7 @@ def CVSIM_plot(config):
         scaling = config.get("scaling", [])
         y_solver = config.get("y_solver", [])
         t_solver = config.get("t_solver", [])
-        C_t_total = config.get("C_t_total", [])
+        store_oxygen = config.get("store_oxygen", [])
 
         import matplotlib.pyplot as plt
         import CVSIM_utils as utils
@@ -44,6 +44,7 @@ def CVSIM_plot(config):
                 store_V_mca_max = config.get("store_V_mca_max", [])
                 store_V_mca_min = config.get("store_V_mca_min", [])
                 carotidOn = config.get("carotidOn", 0)
+                oxy_switch = config.get("oxy_switch", 0)
 
         """
         #IMPORT
@@ -277,14 +278,20 @@ def CVSIM_plot(config):
                 plt.legend(loc='upper left')
                 plt.grid(True)
                 plt.show()
-
+                
+                print("This is the oxy_switch: ", oxy_switch)
+                
+                # if oxy_switch == 1:
+                store_oxygen = config.get("store_oxygen", [])
+                print(store_oxygen)
+                plt.figure(figsize=(10, 6), dpi=300)
                 # oxygen saturation
-                plt.plot(t_eval_trans[9000:12000], C_t_total, label='C_t (Oxygen Concentration in Tissue)')
+                plt.plot(t_eval_trans[9000:12000], store_oxygen[1, 9000:12000], label='C_t (Oxygen Concentration in Tissue)')
                 plt.xlabel('Time (s)')
                 plt.ylabel('C_t')
                 plt.title('Oxygen Concentration Over Time with Periodic Reset')
-                plt.legend()
-                plt.grid()
+                plt.legend(loc='upper left')
+                plt.grid(True)
                 plt.show()
 
                 if carotidOn==1:
