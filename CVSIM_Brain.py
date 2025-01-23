@@ -506,8 +506,10 @@ def solve(scaling, solve_config):
     C_50 = 2.6*10**(-5) # m3 O2 / mmHg*m3 blood
     phi_c = 0.011303
     phi_t = 0.988697
-    C_t = 3.5*10**(-5) # m3 O2 / mmHg*m3 blood
-    C_c = 5.5*10**(-5) # m3 O2 / mmHg*m3 blood
+    C_t = 5.2*10**(-5) # m3 O2 / mmHg*m3 blood
+    C_c = 18**(-3) # m3 O2 / mmHg*m3 blood
+    q_in = 12.5     # mL blood /second
+    C_oxy_inlet = 0.018 # mol O2 / L blood
     
     # Nadler eq.:
     """
@@ -932,7 +934,8 @@ def solve(scaling, solve_config):
                 C_t_total.extend(solution.y[0])
             """
             # dcdt = q_in*C_oxy_inlet + dC_dt(C_oxy)
-            dcdt = dC_dt(C_oxy)
+            # dcdt = dC_dt(C_oxy)
+            dcdt = C_oxy_inlet + dC_dt(C_oxy)
             # print(dcdt)
                 
         """ Cardiac Cycle (CC) """
