@@ -292,6 +292,7 @@ def CVSIM_plot(config):
                         # oxygen saturation
                         # plt.plot(t_eval_trans[9000:12000], store_oxygen[0, 9000:12000], label='C_t (Oxygen Concentration in Tissue)')
                         plt.plot(t_eval_trans, store_oxygen[0], label='C_t (Oxygen Concentration in Tissue)')
+                        plt.loglog(t_eval_trans, store_oxygen[0], label='C_t (Oxygen Concentration in Tissue)')
                         plt.xlabel('Time (s)')
                         plt.ylabel('C_t')
                         plt.title('Oxygen Concentration Over Time with Periodic Reset')
