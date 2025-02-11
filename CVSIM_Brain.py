@@ -494,7 +494,7 @@ def solve(scaling, solve_config):
     controlPars.tbv = 70/(np.sqrt((BW/(22*H**2)))) * BW # Lemmens-Bernstein-Brodsky Equation
     TBV=controlPars.tbv*scaling["v_ratio"]
 
-    global C_oxygen, k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, phi_c, phi_t, C_t, C_c
+    global C_oxygen, k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, C_t, phi_c, phi_t, C_t, C_c
     # Oxygen        
     C_oxygen = 0.35 # ml O2/ml blood
     k_c = 4.2*10**(-14)
@@ -510,7 +510,6 @@ def solve(scaling, solve_config):
     C_c = 18*10**(-3) # 
     q_in = 12.5     # mL blood /second
     C_oxy_inlet = 0.018 # mol O2 / L blood
-    
     # Nadler eq.:
     """
     if sex == 0:
@@ -647,8 +646,8 @@ def solve(scaling, solve_config):
     
     global abp_temp, cvp_temp, co_temp, hr_temp, finap_temp, impulse, Out_av, Out_wave, store_t, store_P_muscle, store_P_intra, HR_list
     global store_E, store_crb, store_BP_min, store_BP_max, store_UV,store_P_muscle2
-    global store_crb_Q_ic, store_crb_Q_j, store_crb_Q_v, store_crb_Q_out, store_crb_P, store_crb_C, store_crb_R, store_crb_G, store_crb_x, store_crb_mca, store_impulse, store_TBV, store_dcdt
-    global store_oxygen
+    global store_crb_Q_ic, store_crb_Q_j, store_crb_Q_v, store_crb_Q_out, store_crb_P, store_crb_C, store_crb_R, store_crb_G, store_crb_x, store_crb_mca, store_impulse, store_TBV
+    global store_oxygen, store_Cc, store_Ct
     
     # Initialize arrays to store the values
     store_t=[0.0]
@@ -679,7 +678,9 @@ def solve(scaling, solve_config):
     store_crb_G = np.zeros((12, len(t_eval))) # store jugular conductances
     store_crb_x = np.zeros(len(t_eval)) # State variable of the autoregulation mechanism related to cerebral flow variations
     store_crb_mca = np.zeros((2, len(t_eval))) # store velocity and radius of middle cerebral artery
-    store_oxygen = np.zeros((2, len(t_eval))) # store oxygen content in the blood
+    store_oxygen = np.zeros((1, len(t_eval))) # store oxygen content in the blood
+    store_Cc = np.zeros((1, len(t_eval))) # store oxygen content in the blood
+    store_Ct = np.zeros((1, len(t_eval))) # store oxygen content in the blood
     crb.Qbrain_buffer = np.full(int(crb_buffer_size/T), crb.Q_n)
 
     global abp_buffer, rap_buffer, abp_ma, abp_pp, rap_ma, abp_hist, rap_hist, abp_hist, rap_hist, pp_hist
@@ -730,7 +731,7 @@ def solve(scaling, solve_config):
         diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
         # consumption
         consumption = (M_max * C_t) / (C_t + C_50)
-        
+
         return diffusion + consumption
 
     def ABRreflexDef():
@@ -843,6 +844,17 @@ def solve(scaling, solve_config):
         #V[x]=UV[x]
     V[21] = V_micro
     
+    # # Initialize last_oxy_reset
+    # global last_oxy_reset, reset_interval
+    # last_oxy_reset = 0
+    # reset_interval = 3
+
+    global last_oxy_reset, reset_interval, reset_flag, dt
+    last_oxy_reset = 0
+    reset_interval = 3
+    reset_flag = False
+    dt = 0.01
+
     """ !!! Start the simulation !!! """
     def esse_cerebral_NEW(t, x_esse):
         global nrr, ncc, nrf, n, n4, HP, V_micro, ElvMIN, ErvMIN, ErvMAX, ElvMAX
@@ -852,6 +864,7 @@ def solve(scaling, solve_config):
         global cc_switch, t_rf, t_rf_onset, t_cc, t_cc_onset, t_resp_onset, impulse
         global para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv, idx_check
         global oxy_switch, k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50, C_t, C_c
+        global last_oxy_reset, reset_interval
 
         """ Update values """
         V = x_esse[:22]  # Volumes of cardiovascular model
@@ -878,6 +891,12 @@ def solve(scaling, solve_config):
             C_oxy = x_esse[37+carotidOn] # oxygen concentration in the brain
         if oxy_switch == 1 and cerebralVeinsOn==0:
             C_oxy = x_esse[27+carotidOn]
+        if t - last_oxy_reset >= reset_interval:
+            # print(f"Resetting C_oxy at t = {t}")  # 调试用
+            C_oxy = C_t  
+            last_oxy_reset = t  # 更新上次重置时间
+
+
         crb.P_v = crb.P_vP_ic + crb.P_ic # venous pressure ?
         crb.P_pa = crb.P_paP_ic + crb.P_ic # pial arterioles pressure
 
@@ -918,26 +937,15 @@ def solve(scaling, solve_config):
                 CPRreflexDef()
         
         if oxy_switch == 1:
-            """ Oxygen delivery """
-            """
-            # Oxygen delivery to the brai
-            t_segments = np.arange(0, t, 3)  # 时间段起点数组
-            t_eval_per_segment = np.linspace(0, 3, 100) # 每段内的评估时间点
-            C_t_total = []  # storage the concentration 
-            time_total = [] 
+            # 计算 q_in 的周期性变化
+            period = 2  # 每 2 秒一个周期
+            q_in = 12.5 if int(t / period) % 2 == 0 else 0  # 每 2 秒交替引入 q_in
+            dcdt = q_in + dC_dt(C_oxy)
+            # dcdt = dC_dt(C_oxy)
 
-            for t_start in t_segments:
-                # 每段时间的模拟 simulation for every period
-                t_span = (t_start, t_start + 3)
-                solution = solve_ivp(dC_dt, (0, 3), [C_t], t_eval=t_eval_per_segment)
-                # 累加浓度, concentration
-                C_t_total.extend(solution.y[0])
-            """
-            # dcdt = q_in*C_oxy_inlet + dC_dt(C_oxy)
-            dcdt = dC_dt(C_oxy)
-            # dcdt = C_oxy_inlet + dC_dt(C_oxy)
             # print(dcdt)
-                
+
+
         """ Cardiac Cycle (CC) """
         t_cc = t - t_cc_onset[-1] # Time in cardiac cycle
         if t_cc >= HP: # If 1 CC has past:
@@ -1635,7 +1643,7 @@ def solve(scaling, solve_config):
         y0[35+carotidOn] = crb.P_svc # testing?
         y0[36+carotidOn] = crb.P_vv # pressure in the vertebral vein
         if oxy_switch == 1:
-            y0[37+carotidOn] = C_c # oxygen concentration in the blood at t=0
+            y0[37+carotidOn] = C_t # oxygen concentration in the blood at t=0
     else:
         y0 = np.zeros(27+carotidOn + oxy_switch)
     
@@ -1647,7 +1655,7 @@ def solve(scaling, solve_config):
     if carotidOn==1:
         y0[27] = crb.P_car # pressure in the middle cerebral artery
     if oxy_switch == 1:
-        y0[27+carotidOn] = C_c # oxygen concentration in the blood at t=0
+        y0[27+carotidOn] = C_t # oxygen concentration in the blood at t=0
 
     y0[0:22] = V # volumes
 
@@ -1660,6 +1668,9 @@ def solve(scaling, solve_config):
 
     # Find the extremes for compartment 3 (index 2)
     extremes_BP = utils.find_extremes_of_cardio_cycles(store_P[2], t_eval, t_cc_onset)
+    print(type(extremes_BP))  # 确保是 np.ndarray
+    print(extremes_BP.shape)  # 确保是一维的 (19,)
+    
     mean_t = extremes_BP[:,0]
     store_BP_max = extremes_BP[:,1]
     store_BP_min = extremes_BP[:,2]

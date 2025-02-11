@@ -25,7 +25,9 @@ def CVSIM_plot(config):
         scaling = config.get("scaling", [])
         y_solver = config.get("y_solver", [])
         t_solver = config.get("t_solver", [])
-        store_oxygen = config.get("store_oxygen", [])
+        # store_oxygen = config.get("store_oxygen", [])
+        Cc_store = config.get("Cc_store", [])
+        Ct_store = config.get("Ct_store", [])
 
         import matplotlib.pyplot as plt
         import CVSIM_utils as utils
@@ -129,109 +131,6 @@ def CVSIM_plot(config):
                 Q_pa:   Flow in the pial arterioles
                 """
 
-                """
-                # crb Q (Cerebral blood flow)
-                plt.figure(figsize=(10, 6))
-                plt.plot(t_eval_trans, store_crb[0], label=r'$Qcrb_{model}$', color='blue', linewidth=0.2, linestyle="-")
-                plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-                #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-                plt.xlabel('t (s)')
-                plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-                plt.title(r'Plot of cerebral blood flow ($Q$) vs time ($t$)')
-                plt.legend(loc='upper left')
-                plt.grid(True)
-                plt.show()
-                
-                # crb Q (Cerebral blood flow) 2
-                plt.figure(figsize=(10, 6))
-                plt.plot(t_eval_trans[9000:12000], store_crb[0, 9000:12000], label=r'$Qcrb_{model}$', color='blue', linewidth=0.4, linestyle="-")
-                plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-                #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-                plt.xlabel('t (s)')
-                plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-                plt.title(r'Plot of cerebral blood flow ($Q$) vs time ($t$)')
-                plt.legend(loc='upper left')
-                plt.grid(True)
-                plt.show()
-
-                # Plot P_c3 upper segment of the collateral network
-                plt.figure(figsize=(10, 6))
-                plt.plot(t_eval_trans[9000:12000], y_solver[31][9000:12000], label=r'$P_{C3}$', color='b', linewidth=0.3)
-                plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-                #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-                plt.xlabel('t (s)')
-                plt.ylabel(r'$P$ (mmHg)')
-                plt.title(r'Plot of pressure ($P$) in upper segment of the collateral network vs time')
-                plt.legend(loc='upper left')
-                plt.grid(True)
-                plt.show()
-                
-                # Plot cerebral veins pressure
-                plt.figure(figsize=(10, 6))
-                plt.plot(t_eval_trans[9000:12000], y_solver[23][9000:12000], label=r'$P_{v}P_{ic}$', color='b', linewidth=0.3)
-                plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-                #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-                plt.xlabel('t (s)')
-                plt.ylabel(r'$P$ (mmHg)')
-                plt.title(r'Plot of pressure ($P$) in the cerebal veins vs time')
-                plt.legend(loc='upper left')
-                plt.grid(True)
-                plt.show()
-                
-                # Plot pressure of pial arterioles
-                plt.figure(figsize=(10, 6))
-                plt.plot(t_eval_trans[9000:12000], y_solver[24][9000:12000], label=r'$P_{v}P_{ic}$', color='b', linewidth=0.3)
-                plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-                #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-                plt.xlabel('t (s)')
-                plt.ylabel(r'$P$ (mmHg)')
-                plt.title(r'Plot of pressure ($P$) in the pial arterioles vs time')
-                plt.legend(loc='upper left')
-                plt.grid(True)
-                plt.show()
-
-
-                # crb Q (Cerebral blood flow all times)
-                plt.figure(figsize=(10, 6), dpi=300)
-                # Loop through each row in the matrix
-                for i in range(len(store_crb_Q_ic)):
-                plt.plot(t_eval_trans, store_crb_Q_ic[i, :], label=names_store_crb_Q_ic[i], linewidth=0.5, linestyle="-")
-                # Add vertical line at specific time points (sts_n)
-                plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')
-                plt.xlabel('t (s)')
-                plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-                plt.title(r'Plot of intracranial blood flow vs time ($t$)')
-                plt.legend(loc='upper left')
-                plt.grid(True)
-                plt.show()
-                
-                # crb Q (Cerebral blood flow 1, zoomed in)
-                plt.figure(figsize=(10, 6), dpi=300)
-                # Loop through each row in the matrix
-                for i in range(len(store_crb_Q_ic)):
-                plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[i, 9000:12000], label=names_store_crb_Q_ic[i], linewidth=0.5, linestyle="-")
-                # Add vertical line at specific time points (sts_n)
-                plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')
-                plt.xlabel('t (s)')
-                plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-                plt.title(r'Plot of intracranial blood flow vs time ($t$)')
-                plt.legend(loc='upper left')
-                plt.grid(True)
-                plt.show()
-                
-                # crb Q (Cerebral ic flow 2, further zoomed in)
-                plt.figure(figsize=(10, 6), dpi=300)
-                plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[0, 9000:12000], label=names_store_crb_Q_ic[0], linewidth=0.5, linestyle="-")
-                plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[1, 9000:12000], label=names_store_crb_Q_ic[1], linewidth=0.5, linestyle="-")
-                # Add vertical line at specific time points (sts_n)
-                plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')
-                plt.xlabel('t (s)')
-                plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
-                plt.title(r'Plot of intracranial blood flow vs time ($t$)')
-                plt.legend(loc='upper left')
-                plt.grid(True)
-                plt.show()
-                """
                 # crb Q (Cerebral inflow)
                 plt.figure(figsize=(10, 6), dpi=300)
                 plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[5, 9000:12000], label=names_store_crb_Q_ic[5], linewidth=0.5, linestyle="-")
@@ -285,17 +184,16 @@ def CVSIM_plot(config):
                 print("This is the oxy_switch: ", oxy_switch)
                 
                 if oxy_switch == 1:
-                        # store_oxygen = config.get("store_oxygen", [])
                         # print(store_oxygen)
                         print(f"The length of oxygen is:, {len(store_oxygen)}")
                         plt.figure(figsize=(10, 6), dpi=300)
-                        # oxygen saturation
+
                         # plt.plot(t_eval_trans[9000:12000], store_oxygen[0, 9000:12000], label='C_t (Oxygen Concentration in Tissue)')
-                        plt.plot(t_eval_trans, store_oxygen[0], label='C_t (Oxygen Concentration in Tissue)')
-                        plt.loglog(t_eval_trans, store_oxygen[0], label='C_t (Oxygen Concentration in Tissue)')
+                        plt.plot(t_eval_trans[:1000], store_oxygen[0][:1000], label='dcdt (Oxygen Concentration in Tissue)')
+                        # plt.loglog(t_eval_trans, store_oxygen[0], label='C_t (Oxygen Concentration in Tissue)')
                         plt.xlabel('Time (s)')
                         plt.ylabel('C_t')
-                        plt.title('Oxygen Concentration Over Time with Periodic Reset')
+                        plt.title('Oxygen Concentration Over Time')
                         plt.legend(loc='upper left')
                         plt.grid(True)
                         plt.show()
@@ -314,77 +212,6 @@ def CVSIM_plot(config):
                         plt.show()
 
                 
-
-        """
-        # Delta T vs T
-        def calculate_T(time_series):
-                
-                #Calculate the difference between consecutive time steps.
-                
-                #Parameters:
-                #time_series (list): A list of time points (sorted in ascending order)
-                
-                #Returns:
-                #list: A list of delta t values
-                
-                T = [time_series[i] - time_series[i - 1] for i in range(1, len(time_series))]
-                return T
-        
-        T = calculate_T(t)
-        
-        # Plotting t vs delta t
-        plt.figure(figsize=(10, 6))
-        plt.plot(t[1:], T, marker='.', markersize=0.1, linewidth=0.1, linestyle='-', color='b')
-        plt.xlabel('Time (t)')
-        plt.ylabel('Delta t')
-        plt.title('Time vs Delta t')
-        plt.grid(True)
-        plt.show()
-        
-        # Plotting t vs delta t until indet ix
-        ix = 1000
-        plt.figure(figsize=(10, 6))
-        plt.plot(t[1:ix+1], T[:ix], marker='.', markersize=0.1, linewidth=0.1, linestyle='-', color='b')
-        plt.xlabel('Time (t)')
-        plt.ylabel('Delta t')
-        plt.title('Time vs Delta t')
-        plt.grid(True)
-        plt.show()
-        
-        # Plot solver results
-        plt.figure(figsize=(10, 6))
-        plt.plot(t_solver+ sts_n - resting_time, y_solver[2], label=r'$Model_{V}$', color='b', linewidth=0.3)
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$V$ (mL)')
-        plt.title(r'Plot of $V$ (compartment 2) vs time')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.show()
-        
-        # Plot solver results
-        plt.figure(figsize=(10, 6))
-        plt.plot(t_solver+ sts_n - resting_time, store_P[2], label=r'$Model_{P}$', color='b', linewidth=0.3)
-        plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        #plt.axvline(x=sts_n+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$P$ (mmHg)')
-        plt.title(r'Plot of $P$ (compartment 2) vs time')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-
-        # Plot the stand-up pressures
-        plt.figure(figsize=(10, 6), dpi=300)
-        plt.plot(t_eval_trans[11000:13500], store_P_intra[11000:13500], '-', label='$P_{muscle}:Thorax$', linewidth=2)
-        plt.plot(t_eval_trans[11000:13500], store_P_muscle[11000:13500], '-', label='$P_{muscle}:Abdom&Legs$', linewidth=2)
-        #plt.plot(t_eval_trans[10000:16000], store_P[12][10000:16000], '-', label='$P_{12}$', linewidth=.5)
-        plt.legend()
-        plt.xlabel('Time (s)')
-        plt.ylabel('Pressure (mmHg)')
-        #plt.vlines(x=[sts_n], ymin=[-10], ymax=[20], colors='k', ls='--', lw=1, label='stand-up')
-        plt.axvline(x=sts_n, color='black', linestyle='--', linewidth=2, label='stand-up')  
-        """
         # Plot the stand-up pressures
         plt.figure(figsize=(10, 6), dpi=300)
         plt.plot(t_eval_trans[11000:13500], store_P_muscle2[0][11000:13500], 
@@ -537,70 +364,7 @@ def CVSIM_plot(config):
         plt.grid(True)
         plt.show()
 
-        """
-        # P and V over time
-        # Plotting
-        plt.figure(figsize=(10, 6))
-        plt.plot(t_eval_trans, outputV[12], label=r'$V_{\text{12}}$', color='b')
-        #plt.plot(t_eval_trans, outputV[10], label=r'$V_{\text{10}}$', color='c')
-        plt.axhline(y=UV, color='g', linestyle='--', label=r'$V^0_{\text{12}}$')  # Add vertical line at UV
-        plt.axhline(y=UV+Vmax12, color='r', linestyle='--', label=r'$V^0_{\text{12}} + V^{max}_{\text{12}}$')  # Add vertical line at UV
-        plt.axvline(x=resting_time, color='black', linestyle='--', label=r'Sit-to-stand')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$V_{\text{12}}$ (mL)')
-        plt.title(r'Plot of volume vs time')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-        
 
-        # alpha_tilt
-        # Plotting
-        plt.figure(figsize=(10, 6), dpi=300)
-        plt.plot(t_eval_trans[148000:160000], alpha_tilt[148000:160000], label=r'$\alpha_tilt$', color='b')
-        plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        plt.axvline(x=resting_time+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$\alpha_tilt$ (°)')
-        plt.title(r'Plot of $\alpha_tilt$ vs time')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-        
-        # P_grav
-        # Plotting
-        plt.figure(figsize=(10, 6), dpi=300)
-        plt.plot(t_eval_trans[148000:160000], p_grav[12,148000:160000], label=r'$P_{h,12}$', color='b')
-        plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        plt.axvline(x=resting_time+delta_t, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'$P_{h,12}$ (mmHg)')
-        plt.title(r'Plot of $P_{h,12}$ vs time')
-        plt.legend()
-        plt.grid(True)
-        plt.show()    
-        
-        # Impulses
-        T_imp = np.linspace(0, tmax, 4193)
-        t_start = 2000
-        # Plotting
-        plt.figure(figsize=(10, 6))
-        plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,0], linewidth=0.5, label=r'$Para$')
-        plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,1], linewidth=0.5, label=r'$\beta$')
-        plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,2], linewidth=0.5, label=r'$Venous,\alpha$')
-        plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,3], linewidth=0.5, label=r'$Arterial,\alpha$')
-        plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,4], linewidth=0.5, label=r'$CP-Venous,\alpha$')
-        plt.plot(T_imp[t_start:], np.array(impulse)[t_start:,5], linewidth=0.5, label=r'$CP-Arterial,\alpha$')
-        plt.axvline(x=resting_time, color='black', linestyle='--', label=r'$t_0$')  # Add vertical line at UV
-        plt.axvline(x=resting_time+7, color='grey', linestyle='--', label=r'$t_0 + \Delta t$')  # Add vertical line at UV
-        plt.xlabel('t (s)')
-        plt.ylabel(r'Response')
-        plt.title(r'Plot of response vs t')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-        
-        """
         # Cardiac E
         Tav=0.12*np.sqrt(1)
         Tsa=0.2*np.sqrt(1)
