@@ -198,6 +198,15 @@ def CVSIM_plot(config):
                         plt.grid(True)
                         plt.show()
 
+                        plt.figure(figsize=(10, 6), dpi=300)
+                        plt.plot(t_eval_trans[:5000], store_oxygen[0][:5000], label='C_t (Oxygen Concentration in Tissue)')
+                        plt.xlabel('Time (s)')
+                        plt.ylabel('C_t m3(O2)/m3(plasma)')
+                        plt.title('Tissue Oxygen Concentration Over Time')
+                        plt.legend(loc='upper left')
+                        plt.grid(True)
+                        plt.show()
+
                 if carotidOn==1:
                         # plot carotid pressure
                         plt.figure(figsize=(10, 6), dpi=300)

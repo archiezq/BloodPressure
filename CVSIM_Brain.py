@@ -945,7 +945,7 @@ def solve(scaling, solve_config):
         if oxy_switch == 1:
             # dcdt = q_in*C_oxy_inlet + dC_dt(C_oxy)
             # q_in = 0.2
-            C_oxy = (crb.Q_pa*C_O2Hb*10**(-6) + C_pa*V_pa)/V_pa # oxygen concentration in the brain
+            C_oxy = (crb.Q_pa*C_O2Hb*10**(-3) + C_pa*V_pa)/V_pa*10**(-6)*0.0224 # oxygen concentration in the brain
             dcdt = dC_dt(C_oxy)
             # dcdt = dC_dt(C_oxy)
 
