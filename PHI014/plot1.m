@@ -78,9 +78,9 @@ figure;
 plot(time2, tsi(:,1), 'r', 'LineWidth', 1.5); hold on;
 plot(time2, tsi(:,2), 'b', 'LineWidth', 1.5);
 
-xlabel('Time');
-ylabel('TSI');
-legend({'TSI'});
+xlabel('Time(s)');
+ylabel('TSI(%)');
+legend({'TSI\_left', 'TSI\_right'});
 title('TSI Changes with Time');
 grid on;
 
@@ -88,21 +88,47 @@ grid on;
 figure;
 plot(time2, tsiff(:,1), 'r', 'LineWidth', 1.5); hold on;
 plot(time2, tsiff(:,2), 'b', 'LineWidth', 1.5);
-xlabel('Time');
-ylabel('tsiff');
-legend({'tsiff'});
+xlabel('Time(s)');
+ylabel('tsiff(%)');
+legend({'tsiff\_left', 'tsiff\_right'});
 title('Tsiff Changes with Time');
 grid on;
+
+% figure;
+% plot(time2, absO2Hb, 'r', 'LineWidth', 1.5); hold on;
+% plot(time2, absHHb, 'b', 'LineWidth', 1.5);
+% plot(time2, absHHb+absO2Hb, 'k', 'LineWidth', 1.5);
+% ttsi = absO2Hb./(absHHb+absO2Hb)*100;
+% plot(time2, ttsi, 'green', 'LineWidth', 1.5)
+% plot(time2, tsi(:,2), 'red', 'LineWidth', 1.0);
+% xlabel('Time');
+% ylabel('umol');
+% legend({'O2Hb','HHb','Total_Hb','TSI'});
+% title('Tsiff Changes with Time');
+% grid on;
+
 
 figure;
 plot(time2, absO2Hb, 'r', 'LineWidth', 1.5); hold on;
 plot(time2, absHHb, 'b', 'LineWidth', 1.5);
-plot(time2, absHHb+absO2Hb, 'k', 'LineWidth', 1.5);
-ttsi = absO2Hb./(absHHb+absO2Hb)*100;
-plot(time2, ttsi, 'green', 'LineWidth', 1.5)
-plot(time2, tsi(:,2), 'red', 'LineWidth', 1.0);
-xlabel('Time');
-ylabel('umol');
-legend({'O2Hb','HHb','Total_Hb','TSI'});
-title('Tsiff Changes with Time');
+xlabel('Time(s)');
+ylabel('Concentration (umol/L)');
+legend({'O2Hb','HHb'});
+title('O2Hb and HHb Changes with Time');
+grid on;
+
+figure;
+plot(time2, absO2Hb, 'r', 'LineWidth', 1.5); hold on;
+xlabel('Time(s)');
+ylabel('Concentration (umol/L)');
+legend({'O2Hb'});
+title('O2Hb Changes with Time');
+grid on;
+
+figure;
+plot(time2, absHHb, 'b', 'LineWidth', 1.5);hold on;
+xlabel('Time(s)');
+ylabel('Concentration (umol/L)');
+legend({'HHb'});
+title('HHb Changes with Time');
 grid on;

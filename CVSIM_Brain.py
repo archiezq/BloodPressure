@@ -494,7 +494,8 @@ def solve(scaling, solve_config):
     controlPars.tbv = 70/(np.sqrt((BW/(22*H**2)))) * BW # Lemmens-Bernstein-Brodsky Equation
     TBV=controlPars.tbv*scaling["v_ratio"]
 
-    global C_oxygen, k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, C_t, phi_c, phi_t, C_t, C_c
+    global C_oxygen, k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, C_t, phi_c, phi_t, C_t, C_c, C_O2Hb, C_pa
+    global V_pa
     # Oxygen        
     C_oxygen = 0.35 # ml O2/ml blood
     k_c = 4.2*10**(-14)
@@ -506,10 +507,16 @@ def solve(scaling, solve_config):
     C_50 = 2.6*10**(-5) # m3 O2 / mmHg*m3 blood
     phi_c = 0.011303
     phi_t = 0.988697
-    C_t = 5.2*10**(-5) # m3 O2 / mmHg*m3 blood
-    C_c = 18*10**(-3) # 
+    C_t = 4.5*10**(-5) # m3 O2 / mmHg*m3 blood
+    C_c = 5*10**(-4) # 
+    
     q_in = 12.5     # mL blood /second
     C_oxy_inlet = 0.018 # mol O2 / L blood
+    
+    C_O2Hb = 64 # umol/L
+    C_pa = C_c
+    V_pa = 10*10**(-3) # cm3
+
     # Nadler eq.:
     """
     if sex == 0:
@@ -864,7 +871,7 @@ def solve(scaling, solve_config):
         global cc_switch, t_rf, t_rf_onset, t_cc, t_cc_onset, t_resp_onset, impulse
         global para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv, idx_check
         global oxy_switch, k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50, C_t, C_c
-        global last_oxy_reset, reset_interval
+        global last_oxy_reset, reset_interval, C_pa, C_O2Hb, V_pa
 
         """ Update values """
         V = x_esse[:22]  # Volumes of cardiovascular model
@@ -891,11 +898,10 @@ def solve(scaling, solve_config):
             C_oxy = x_esse[37+carotidOn] # oxygen concentration in the brain
         if oxy_switch == 1 and cerebralVeinsOn==0:
             C_oxy = x_esse[27+carotidOn]
-        if t - last_oxy_reset >= reset_interval:
-            # print(f"Resetting C_oxy at t = {t}")  # 调试用
-            C_oxy = C_t  
-            last_oxy_reset = t  # 更新上次重置时间
-
+        # if t - last_oxy_reset >= reset_interval:
+        #     # print(f"Resetting C_oxy at t = {t}")  # 调试用
+        #     C_oxy = C_t  
+        #     last_oxy_reset = t  # 更新上次重置时间
 
         crb.P_v = crb.P_vP_ic + crb.P_ic # venous pressure ?
         crb.P_pa = crb.P_paP_ic + crb.P_ic # pial arterioles pressure
@@ -937,10 +943,10 @@ def solve(scaling, solve_config):
                 CPRreflexDef()
         
         if oxy_switch == 1:
-            # 计算 q_in 的周期性变化
-            period = 2  # 每 2 秒一个周期
-            q_in = 12.5 if int(t / period) % 2 == 0 else 0  # 每 2 秒交替引入 q_in
-            dcdt = q_in + dC_dt(C_oxy)
+            # dcdt = q_in*C_oxy_inlet + dC_dt(C_oxy)
+            # q_in = 0.2
+            C_oxy = (crb.Q_pa*C_O2Hb*10**(-6) + C_pa*V_pa)/V_pa # oxygen concentration in the brain
+            dcdt = dC_dt(C_oxy)
             # dcdt = dC_dt(C_oxy)
 
             # print(dcdt)
@@ -1084,6 +1090,7 @@ def solve(scaling, solve_config):
 
         #crb.dx_autdt = (1.0/crb.tau_aut)*(-crb.x_aut + crb.G_aut*(crb.Q_la-crb.Q_n)/crb.Q_n) 
         # when I calculate Q, Q_n = 12.5 causes the model to fail during the supine to standing test. 
+        ???
         """
 
         # ------------------------ Different parts ------------------------
