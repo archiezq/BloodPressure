@@ -503,19 +503,19 @@ def solve(scaling, solve_config):
     s_v = 4.74 *10**5
     alpha_b = 3.11*10**(-5) # m3 O2 / mmHg*m3 blood
     alpha_t = 3.95*10**(-5) # m3 O2 / mmHg*m3 blood
-    M_max = 2.4*10**(-4) # m3 O2 / mmHg*m3 blood
+    M_max = 2.4*10**(-4) # m3 O2 / s*m3 blood
     C_50 = 2.6*10**(-5) # m3 O2 / mmHg*m3 blood
     phi_c = 0.011303
     phi_t = 0.988697
-    C_t = 4.5*10**(-5) # m3 O2 / mmHg*m3 blood
-    C_c = 5*10**(-4) # 
+    C_t = 2*10**(-4) # m3 O2 / m3 blood
+    C_c = 3*10**(-3) # 
     
     q_in = 12.5     # mL blood /second
     C_oxy_inlet = 0.018 # mol O2 / L blood
     
-    C_O2Hb = 64 # umol/L
+    C_O2Hb = 2 # umol/L
     C_pa = C_c
-    V_pa = 10*10**(-3) # cm3
+    V_pa = 10 # cm3
 
     # Nadler eq.:
     """
@@ -945,7 +945,9 @@ def solve(scaling, solve_config):
         if oxy_switch == 1:
             # dcdt = q_in*C_oxy_inlet + dC_dt(C_oxy)
             # q_in = 0.2
-            C_oxy = (crb.Q_pa*C_O2Hb*10**(-3) + C_pa*V_pa)/V_pa*10**(-6)*0.0224 # oxygen concentration in the brain
+            # oxygen concentration plasma
+            # C_oxy = (crb.Q_pa*C_O2Hb*10**(-3) + C_pa*V_pa)/V_pa*10**(-6)*0.0224 # m3/m3
+            C_oxy = (crb.Q_pa*10**(-6)*C_O2Hb*22.4 + C_pa*V_pa)/V_pa # m3/m3
             dcdt = dC_dt(C_oxy)
             # dcdt = dC_dt(C_oxy)
 
