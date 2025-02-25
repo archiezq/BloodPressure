@@ -494,10 +494,10 @@ def solve(scaling, solve_config):
     controlPars.tbv = 70/(np.sqrt((BW/(22*H**2)))) * BW # Lemmens-Bernstein-Brodsky Equation
     TBV=controlPars.tbv*scaling["v_ratio"]
 
-    global C_oxygen, k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, C_t, phi_c, phi_t, C_t, C_c, C_O2Hb, C_pa
+    global k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, C_t, phi_c, phi_t, C_t, C_c, C_O2Hb, C_pa
     global V_pa
-    # Oxygen        
-    C_oxygen = 0.35 # ml O2/ml blood
+
+    # Oxygen transport parameters        
     k_c = 4.2*10**(-14)
     h_c = 1*10**(-6)
     s_v = 4.74 *10**5
@@ -507,15 +507,16 @@ def solve(scaling, solve_config):
     C_50 = 2.6*10**(-5) # m3 O2 / mmHg*m3 blood
     phi_c = 0.011303
     phi_t = 0.988697
-    C_t = 2*10**(-4) # m3 O2 / m3 blood
-    C_c = 3*10**(-3) # 
-    
-    q_in = 12.5     # mL blood /second
-    C_oxy_inlet = 0.018 # mol O2 / L blood
-    
-    C_O2Hb = 2 # umol/L
-    C_pa = C_c
+
+
+    C_t = 2*10**(-4) # m3 O2 / m3 blood ?? TO BE CHECKED
+    C_c = 3*10**(-3) # ?? TO BE CHECKED
+    C_O2Hb = 2 # umol/L ?? TO BE CHECKED
+    C_pa = C_c  # ?? TO BE CHECKED
     V_pa = 10 # cm3
+
+    # q_in = 12.5     # mL blood /second
+    # C_oxy_inlet = 0.018 # mol O2 / L blood
 
     # Nadler eq.:
     """
@@ -851,16 +852,12 @@ def solve(scaling, solve_config):
         #V[x]=UV[x]
     V[21] = V_micro
     
-    # # Initialize last_oxy_reset
-    # global last_oxy_reset, reset_interval
+
+    # global last_oxy_reset, reset_interval, reset_flag, dt
     # last_oxy_reset = 0
     # reset_interval = 3
-
-    global last_oxy_reset, reset_interval, reset_flag, dt
-    last_oxy_reset = 0
-    reset_interval = 3
-    reset_flag = False
-    dt = 0.01
+    # reset_flag = False
+    # dt = 0.01
 
     """ !!! Start the simulation !!! """
     def esse_cerebral_NEW(t, x_esse):
@@ -943,13 +940,15 @@ def solve(scaling, solve_config):
                 CPRreflexDef()
         
         if oxy_switch == 1:
-            # dcdt = q_in*C_oxy_inlet + dC_dt(C_oxy)
-            # q_in = 0.2
             # oxygen concentration plasma
-            # C_oxy = (crb.Q_pa*C_O2Hb*10**(-3) + C_pa*V_pa)/V_pa*10**(-6)*0.0224 # m3/m3
-            C_oxy = (crb.Q_pa*10**(-6)*C_O2Hb*22.4 + C_pa*V_pa)/V_pa # m3/m3
+            # Time step T = 0.01 s
+            O2_in = crb.Q_pa*10**(-6)*C_O2Hb*22.4 * T
+            O2_pa = C_pa*V_pa
+            O2_out = crb.Q_pa*10**(-6)*C_O2Hb*22.4*0.7 * T
+            C_oxy = (O2_in + O2_pa - O2_out)/V_pa # m3/m3
+            # C_oxy = (O2_in + O2_pa)/V_pa # m3/m3
+
             dcdt = dC_dt(C_oxy)
-            # dcdt = dC_dt(C_oxy)
 
             # print(dcdt)
 

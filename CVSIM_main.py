@@ -174,7 +174,7 @@ if dataset == 2:
     sts1 = 0
     sts_n = 0
     sts_n_end = float('nan') # Initialize to NaN explicitly
-    sit_n = 180
+    sit_n = 120
 
 sit_index = utils.find_index_of_time(data_time, sts0)
 stand_index = utils.find_index_of_time(data_time, sts1)

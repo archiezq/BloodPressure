@@ -35,6 +35,7 @@ def CVSIM_plot(config):
         import matplotlib.pyplot as plt
         from reflexPars import _init_reflex # Get the control parameters loaded.
         from adultPars_carotid import _init_pars # Get the parameters for resistance, elastance and uvolume
+        import matplotlib.ticker as ticker
 
         reflexPars = _init_reflex(scaling); # Get all the reflex parameters stored to the list 'reflexPars'.
         subjectPars = _init_pars(scaling); # Here the compartments parameters are assigned
@@ -190,7 +191,7 @@ def CVSIM_plot(config):
 
                         # plt.plot(t_eval_trans[9000:12000], store_oxygen[0, 9000:12000], label='C_t (Oxygen Concentration in Tissue)')
                         # plt.plot(t_eval_trans[:1000], store_oxygen[0][:1000], label='C_t (Oxygen Concentration in Tissue)')
-                        plt.plot(t_eval_trans, store_oxygen[0], label='C_t (Oxygen Concentration in Tissue)')
+                        plt.plot(t_eval_trans[7000:], store_oxygen[0][7000:], label='C_t (Oxygen Concentration in Tissue)')
                         plt.xlabel('Time (s)')
                         plt.ylabel('C_t (m3 O2/m3 tissue)')
                         plt.title('Tissue Oxygen Concentration vs Time')
@@ -199,7 +200,7 @@ def CVSIM_plot(config):
                         plt.show()
 
                         plt.figure(figsize=(10, 6), dpi=300)
-                        plt.plot(t_eval_trans[:5000], store_oxygen[0][:5000], label='C_t (Oxygen Concentration in Tissue)')
+                        plt.plot(t_eval_trans[10000:16000], store_oxygen[0][10000:16000], label='C_t (Oxygen Concentration in Tissue)')  
                         plt.xlabel('Time (s)')
                         plt.ylabel('C_t (m3 O2/m3 tissue)')
                         plt.title('Tissue Oxygen Concentration vs Time')
