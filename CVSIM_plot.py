@@ -35,7 +35,7 @@ def CVSIM_plot(config):
         import matplotlib.pyplot as plt
         from reflexPars import _init_reflex # Get the control parameters loaded.
         from adultPars_carotid import _init_pars # Get the parameters for resistance, elastance and uvolume
-        import matplotlib.ticker as ticker
+        from matplotlib.ticker import ScalarFormatter
 
         reflexPars = _init_reflex(scaling); # Get all the reflex parameters stored to the list 'reflexPars'.
         subjectPars = _init_pars(scaling); # Here the compartments parameters are assigned
@@ -197,6 +197,9 @@ def CVSIM_plot(config):
                         plt.title('Tissue Oxygen Concentration vs Time')
                         plt.legend(loc='upper left')
                         plt.grid(True)
+                        ax = plt.gca()
+                        ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+                        ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
                         plt.show()
 
                         plt.figure(figsize=(10, 6), dpi=300)
@@ -206,6 +209,9 @@ def CVSIM_plot(config):
                         plt.title('Tissue Oxygen Concentration vs Time')
                         plt.legend(loc='upper left')
                         plt.grid(True)
+                        ax = plt.gca()
+                        ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+                        ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
                         plt.show()
 
                 if carotidOn==1:

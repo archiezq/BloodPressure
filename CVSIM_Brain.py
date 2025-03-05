@@ -228,7 +228,7 @@ def solve(scaling, solve_config):
         Q_la = 12.5 # ml/s ?
         #Q_pa = 7.5 # ml/s ?
         Q_pa = 12.5 # ml/s ?
-        Q_auto = 11.7
+        Q_auto = 11.7   # what is it ???
         Q_jr3 = 5.85 # ml/s
         Q_jl3  = 5.85 # ml/s
         Q_vvr = 0.40 # ml/s
@@ -247,7 +247,7 @@ def solve(scaling, solve_config):
 
         "----------------------------------------- capacities ----------------------------------------------------"
 
-        # capacities related to the jugular-vertrebral circuit (supine condition) Table 4
+        # capacities related to the jugular-vertrebral circuit (supine condition) Table 4 2015
         # 与颈椎静脉环路相关的容量（仰卧位）表 4
         C_vs = 0.5 # ml/mmHg
         C_jr3 =  1.0 # ml/mmHg
@@ -346,8 +346,6 @@ def solve(scaling, solve_config):
         Q_flist = []
         Q_0list = []
         R_vslist = []
-        # R_palist = []
-        C_iclist = []
         G_jr3list = []
         G_jr2list = []
         G_jr1list =[]
@@ -363,12 +361,6 @@ def solve(scaling, solve_config):
         G_cjl2list = []
         P_paP_iclist = []
         C_iclist = []
-        C_vilist = []
-        C_palist = []
-        # R_palist = []
-        x_autlist = []
-        Q_flist = []
-        Q_0list = []
         Q_c3list =[]
         Q_c2list = []
         Q_c1list = []
@@ -430,7 +422,7 @@ def solve(scaling, solve_config):
         #i = 0 # i is defining different conditions for plot generation (simulating 0 conductances in vessels)
             # LvL, please give some more info on what eacht i means.
 
-        dx_autdt = (1.0/tau_aut) * (-x_aut + G_aut * (Q_auto - Q_n) / Q_n) # initialize dx_autdt
+        dx_autdt = (1.0/tau_aut) * (-x_aut + G_aut * (Q_auto - Q_n) / Q_n) # initialize dx_autdt 2000 A14
 
     # Get all the pars from the different parameters values
     global filename, sts_n
@@ -495,28 +487,50 @@ def solve(scaling, solve_config):
     TBV=controlPars.tbv*scaling["v_ratio"]
 
     global k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, C_t, phi_c, phi_t, C_t, C_c, C_O2Hb, C_pa
-    global V_pa
+    global V_pa, SaO2, Hb_baseline, L, k, m, b, O2_capacity, alpha_p
+    global Dm, Am, dm, RBC_count, PO2_plasma_initial, PO2_RBC_initial
 
-    # Oxygen transport parameters        
-    k_c = 4.2*10**(-14)
-    h_c = 1*10**(-6)
-    s_v = 4.74 *10**5
-    alpha_b = 3.11*10**(-5) # m3 O2 / mmHg*m3 blood
-    alpha_t = 3.95*10**(-5) # m3 O2 / mmHg*m3 blood
+    # Oxygen transport parameters (Marta's paper equation 4.4)       
+    k_c = 4.2e-14          # [m^3(O2)/(mmHg·mm·s)]
+    h_c = 1.0e-6              # [m]
+    s_v = 4.74e5         # [1/m]
+    alpha_b = 3.11e-5        # [m^3(O2)/(mmHg·m^3(plasma))]
+    alpha_t = 3.95e-5        # [m^3(O2)/(mmHg·m^3(tissue))]
+    tau = 8.0e-2             # [s]
     M_max = 2.4*10**(-4) # m3 O2 / s*m3 blood
     C_50 = 2.6*10**(-5) # m3 O2 / mmHg*m3 blood
     phi_c = 0.011303
     phi_t = 0.988697
 
 
-    C_t = 2*10**(-4) # m3 O2 / m3 blood ?? TO BE CHECKED
+    C_t = 2.8*10**(-4) # m3 O2 / m3 blood ?? TO BE CHECKED
     C_c = 3*10**(-3) # ?? TO BE CHECKED
     C_O2Hb = 2 # umol/L ?? TO BE CHECKED
     C_pa = C_c  # ?? TO BE CHECKED
-    V_pa = 10 # cm3
-
+    V_pa = 5 # cm3
+    SaO2 = 0.97
     # q_in = 12.5     # mL blood /second
     # C_oxy_inlet = 0.018 # mol O2 / L blood
+
+
+    Hb_baseline = 150.0 # g/L
+    L = 1.251   # 氧-血红蛋白解离曲线参数
+    k = 0.0676  # 1/mmHg
+    m = 17.71   # mmHg
+    b = -0.274  # 偏移量
+    O2_capacity = 1.34  # mL O2/g Hb, 血红蛋白氧容量
+    alpha_p = 0.0031  # 氧气在血浆中的溶解系数
+
+    # 扩散相关参数
+    Dm = 1.5e-5  # 扩散系数
+    Am = 1.35e-6  # 单个红细胞表面积 cm^2
+    dm = 2.5e-5  # 红细胞膜厚度 cm
+    RBC_count = 5e6  # 每毫升血液中红细胞数量
+
+    PO2_plasma_initial = 95.0  # 初始血浆氧分压 mmHg
+    PO2_RBC_initial = 98.0     # 初始红细胞内氧分压 mmHg
+
+
 
     # Nadler eq.:
     """
@@ -740,7 +754,28 @@ def solve(scaling, solve_config):
         # consumption
         consumption = (M_max * C_t) / (C_t + C_50)
 
-        return diffusion + consumption
+        return diffusion, diffusion + consumption
+
+
+    def dissolved_O2(PO2):
+        dissolved_O2 = alpha_p * PO2
+        return dissolved_O2
+    
+    def patial_pressure(SaO2):
+        """从SaO2计算PO2"""
+        return m + np.log(L / (SaO2 - b) - 1) / (-k)
+
+
+    # def hemo2blood(SaO2):
+    #     '''
+    #     Calculate the total oxygen concentration of the blood using 
+    #     the hemoglobin concentration, hemoglobin saturation (SaO2), and PO2.
+    #     '''
+    #     global Hb
+    #     Hb = 15 # g/dL
+    #     o2 = (1.34*15*SaO2)+0.0031*17.71+0.0031/0.0676*np.log(1.251/(SaO2+0.274)-1) # ml O2/dL blood
+    #     concentration = o2/100 # m3 O2/m3 blood
+    #     return concentration
 
     def ABRreflexDef():
         global HP, HR, ErvMAX, ElvMAX
@@ -942,9 +977,9 @@ def solve(scaling, solve_config):
         if oxy_switch == 1:
             # oxygen concentration plasma
             # Time step T = 0.01 s
-            O2_in = crb.Q_pa*10**(-6)*C_O2Hb*22.4 * T
+            O2_in = crb.Q_pa*10**(-6)*C_O2Hb*22.4
             O2_pa = C_pa*V_pa
-            O2_out = crb.Q_pa*10**(-6)*C_O2Hb*22.4*0.7 * T
+            O2_out = crb.Q_pa*10**(-6)*C_O2Hb*22.4*0.7
             C_oxy = (O2_in + O2_pa - O2_out)/V_pa # m3/m3
             # C_oxy = (O2_in + O2_pa)/V_pa # m3/m3
 
