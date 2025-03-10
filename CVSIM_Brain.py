@@ -739,8 +739,9 @@ def solve(scaling, solve_config):
         alphav_resp_new=np.sum(np.flip(rap_hist,0)* reflexPars.cpa)
         alphav_respv_new=np.sum(np.flip(rap_hist,0)* reflexPars.cpv)
 
-    def dCt_dt(C_t):
-        global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50, C_c
+    def dCt_dt(C_t, C_c):
+        global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50
+
         # diffusion
         diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
         # consumption
@@ -760,11 +761,12 @@ def solve(scaling, solve_config):
         """从PO2计算SaO2"""
         return 1 / (1 + np.exp(-k*(PO2 - m))) + b
     
-    def dCc_dt(C_c):
-        global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, C_t, C_in
+    def dCc_dt(C_c, C_t, C_in, Q_pa, Q_auto):
+        global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, V_pa
+
         diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
-        dcdt = crb.Q_pa *(C_in - C_c) -diffusion - C_c/V_pa * crb.Q_auto
-        return dcdt
+        result = Q_pa *(C_in - C_c) -diffusion - C_c/V_pa * Q_auto
+        return result
     
 
 
@@ -977,13 +979,6 @@ def solve(scaling, solve_config):
                 CPRreflexDef()
         
         # if oxy_switch == 1:
-        #     # oxygen concentration plasma
-        #     # Time step T = 0.01 s
-        #     # O2_in = crb.Q_pa*10**(-6)*C_O2Hb*22.4
-        #     # O2_pa = C_pa*V_pa
-        #     # O2_out = crb.Q_pa*10**(-6)*C_O2Hb*22.4*0.7
-        #     # C_oxy = (O2_in + O2_pa - O2_out)/V_pa # m3/m3
-        #     # C_oxy = (O2_in + O2_pa)/V_pa # m3/m3
         #     global SaO2, C_in
         #     PO2 = partial_pressure(SaO2)
         #     C_oxy = dissolved_O2(PO2)
@@ -994,21 +989,34 @@ def solve(scaling, solve_config):
         #     SaO2 = saturation(PO2)
         #     # print(dcdt)
         if oxy_switch == 1:
-            global SaO2, C_in
-            # 计算当前血氧分压
+            global SaO2, C_t, C_in
+            
+            # Calculate current blood oxygen partial pressure
             PO2 = partial_pressure(SaO2)
-            # 计算溶解氧浓度（初始值，标量）
-            C_oxy_val = dissolved_O2(PO2)
-            # 分别计算组织和血浆中氧浓度的变化率
-            dcdt = dCt_dt(C_oxy_val)
-            dccdt = dCc_dt(C_oxy_val)
-            # 叠加两项的变化，得到更新后的氧浓度
-            C_oxy_new = C_oxy_val + dcdt + dccdt
-            # 重新计算分压和饱和度
-            PO2_new = C_oxy_new / alpha_b
-            SaO2 = saturation(PO2_new)
-            # 将更新结果包装为一维数组，保证后续使用时数据结构不改变
-            C_oxy = np.array([C_oxy_new])
+            
+            # Calculate dissolved oxygen concentration
+            C_c_current = dissolved_O2(PO2)
+            
+            # Calculate rates of change for tissue and plasma oxygen concentrations
+            dcdt = dCt_dt(C_t, C_c_current)
+            dC_c = dCc_dt(C_c_current, C_t, C_in, crb.Q_pa, crb.Q_auto)
+            
+            # Update concentrations based on calculated rates
+            # Use proper time step for integration
+            C_t_new = C_t + dcdt * controlPars.T
+            C_c_new = C_c_current + dC_c * controlPars.T
+            
+            # Recalculate physiological parameters based on new concentrations
+            PO2_new = C_c_new / alpha_b
+            SaO2_new = saturation(PO2_new)
+            
+            # Update global variables
+            C_t = C_t_new
+            SaO2 = SaO2_new
+            
+            # Important: Return as a scalar rather than array to avoid dimension issues
+            # The value is later stored in a results array in the solver
+            C_oxy = C_c_new
 
 
         """ Cardiac Cycle (CC) """
