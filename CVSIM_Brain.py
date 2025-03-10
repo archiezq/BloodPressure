@@ -487,8 +487,7 @@ def solve(scaling, solve_config):
     TBV=controlPars.tbv*scaling["v_ratio"]
 
     global k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, C_t, phi_c, phi_t, C_t, C_c, C_O2Hb, C_pa
-    global V_pa, SaO2, Hb_baseline, L, k, m, b, O2_capacity, alpha_p
-    global Dm, Am, dm, RBC_count, PO2_plasma_initial, PO2_RBC_initial
+    global V_pa, SaO2, Hb_baseline, L, k, m, b, alpha_p, C_in
 
     # Oxygen transport parameters (Marta's paper equation 4.4)       
     k_c = 4.2e-14          # [m^3(O2)/(mmHg·mm·s)]
@@ -509,6 +508,7 @@ def solve(scaling, solve_config):
     C_pa = C_c  # ?? TO BE CHECKED
     V_pa = 5 # cm3
     SaO2 = 0.97
+    C_in = 3.1*10**(-3) # ?? TO BE CHECKED
     # q_in = 12.5     # mL blood /second
     # C_oxy_inlet = 0.018 # mol O2 / L blood
 
@@ -518,17 +518,7 @@ def solve(scaling, solve_config):
     k = 0.0676  # 1/mmHg
     m = 17.71   # mmHg
     b = -0.274  # 偏移量
-    O2_capacity = 1.34  # mL O2/g Hb, 血红蛋白氧容量
     alpha_p = 0.0031  # 氧气在血浆中的溶解系数
-
-    # 扩散相关参数
-    Dm = 1.5e-5  # 扩散系数
-    Am = 1.35e-6  # 单个红细胞表面积 cm^2
-    dm = 2.5e-5  # 红细胞膜厚度 cm
-    RBC_count = 5e6  # 每毫升血液中红细胞数量
-
-    PO2_plasma_initial = 95.0  # 初始血浆氧分压 mmHg
-    PO2_RBC_initial = 98.0     # 初始红细胞内氧分压 mmHg
 
 
 
@@ -703,6 +693,8 @@ def solve(scaling, solve_config):
     store_oxygen = np.zeros((1, len(t_eval))) # store oxygen content in the blood
     store_Cc = np.zeros((1, len(t_eval))) # store oxygen content in the blood
     store_Ct = np.zeros((1, len(t_eval))) # store oxygen content in the blood
+    store_SaO2 = np.zeros((1, len(t_eval))) # store oxygen content in the blood
+    # store_Hb = np.zeros((1, len(t_eval))) # store oxygen content in the blood
     crb.Qbrain_buffer = np.full(int(crb_buffer_size/T), crb.Q_n)
 
     global abp_buffer, rap_buffer, abp_ma, abp_pp, rap_ma, abp_hist, rap_hist, abp_hist, rap_hist, pp_hist
@@ -747,23 +739,33 @@ def solve(scaling, solve_config):
         alphav_resp_new=np.sum(np.flip(rap_hist,0)* reflexPars.cpa)
         alphav_respv_new=np.sum(np.flip(rap_hist,0)* reflexPars.cpv)
 
-    def dC_dt(C_t):
+    def dCt_dt(C_t):
         global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50, C_c
         # diffusion
         diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
         # consumption
         consumption = (M_max * C_t) / (C_t + C_50)
 
-        return diffusion, diffusion + consumption
-
+        return diffusion + consumption
 
     def dissolved_O2(PO2):
-        dissolved_O2 = alpha_p * PO2
+        dissolved_O2 = alpha_b * PO2
         return dissolved_O2
     
-    def patial_pressure(SaO2):
+    def partial_pressure(SaO2):
         """从SaO2计算PO2"""
         return m + np.log(L / (SaO2 - b) - 1) / (-k)
+    
+    def saturation(PO2):
+        """从PO2计算SaO2"""
+        return 1 / (1 + np.exp(-k*(PO2 - m))) + b
+    
+    def dCc_dt(C_c):
+        global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, C_t, C_in
+        diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
+        dcdt = crb.Q_pa *(C_in - C_c) -diffusion - C_c/V_pa * crb.Q_auto
+        return dcdt
+    
 
 
     # def hemo2blood(SaO2):
@@ -903,7 +905,7 @@ def solve(scaling, solve_config):
         global cc_switch, t_rf, t_rf_onset, t_cc, t_cc_onset, t_resp_onset, impulse
         global para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv, idx_check
         global oxy_switch, k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50, C_t, C_c
-        global last_oxy_reset, reset_interval, C_pa, C_O2Hb, V_pa
+        global last_oxy_reset, reset_interval, C_pa, C_O2Hb, V_pa, C_oxy
 
         """ Update values """
         V = x_esse[:22]  # Volumes of cardiovascular model
@@ -974,18 +976,39 @@ def solve(scaling, solve_config):
                 alphav_respv = (alphav_respv_new-alphav_respv_old)*t_rf/reflexPars.S_GRAN+alphav_respv_old
                 CPRreflexDef()
         
+        # if oxy_switch == 1:
+        #     # oxygen concentration plasma
+        #     # Time step T = 0.01 s
+        #     # O2_in = crb.Q_pa*10**(-6)*C_O2Hb*22.4
+        #     # O2_pa = C_pa*V_pa
+        #     # O2_out = crb.Q_pa*10**(-6)*C_O2Hb*22.4*0.7
+        #     # C_oxy = (O2_in + O2_pa - O2_out)/V_pa # m3/m3
+        #     # C_oxy = (O2_in + O2_pa)/V_pa # m3/m3
+        #     global SaO2, C_in
+        #     PO2 = partial_pressure(SaO2)
+        #     C_oxy = dissolved_O2(PO2)
+        #     dcdt = dCt_dt(C_oxy)
+        #     dccdt = dCc_dt(C_oxy)
+        #     C_oxy = C_oxy + dccdt
+        #     PO2 = C_oxy / alpha_b
+        #     SaO2 = saturation(PO2)
+        #     # print(dcdt)
         if oxy_switch == 1:
-            # oxygen concentration plasma
-            # Time step T = 0.01 s
-            O2_in = crb.Q_pa*10**(-6)*C_O2Hb*22.4
-            O2_pa = C_pa*V_pa
-            O2_out = crb.Q_pa*10**(-6)*C_O2Hb*22.4*0.7
-            C_oxy = (O2_in + O2_pa - O2_out)/V_pa # m3/m3
-            # C_oxy = (O2_in + O2_pa)/V_pa # m3/m3
-
-            dcdt = dC_dt(C_oxy)
-
-            # print(dcdt)
+            global SaO2, C_in
+            # 计算当前血氧分压
+            PO2 = partial_pressure(SaO2)
+            # 计算溶解氧浓度（初始值，标量）
+            C_oxy_val = dissolved_O2(PO2)
+            # 分别计算组织和血浆中氧浓度的变化率
+            dcdt = dCt_dt(C_oxy_val)
+            dccdt = dCc_dt(C_oxy_val)
+            # 叠加两项的变化，得到更新后的氧浓度
+            C_oxy_new = C_oxy_val + dcdt + dccdt
+            # 重新计算分压和饱和度
+            PO2_new = C_oxy_new / alpha_b
+            SaO2 = saturation(PO2_new)
+            # 将更新结果包装为一维数组，保证后续使用时数据结构不改变
+            C_oxy = np.array([C_oxy_new])
 
 
         """ Cardiac Cycle (CC) """
@@ -1632,6 +1655,7 @@ def solve(scaling, solve_config):
             store_crb_x[idx] = crb.x_aut # State variable of the autoregulation mechanism related to cerebral flow variations
             store_crb_mca[:, idx] = crb.v_mca, crb.r_mca # Flow velocity in the middle cerebral artery
             store_oxygen[:, idx] = dcdt
+            # store_SaO2[:, idx] = SaO2
 
             if cerebralVeinsOn==1:
                 store_crb_Q_j[:, idx] = crb.Q_c3, crb.Q_c2, crb.Q_c1, crb.Q_jr3, crb.Q_jr2, crb.Q_jr1, crb.Q_jl3, crb.Q_jl2, crb.Q_jl1 # jugular flows

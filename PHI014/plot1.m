@@ -75,12 +75,12 @@ grid on;
 
 time2 = time(1:2:end);
 figure;
-plot(time2, tsi(:,1), 'r', 'LineWidth', 1.5); hold on;
-plot(time2, tsi(:,2), 'b', 'LineWidth', 1.5);
+% plot(time2, tsi(:,1), 'r', 'LineWidth', 1.5); hold on;
+plot(time2, tsi(:,2), 'b', 'LineWidth', 1.5);hold on;
 
 xlabel('Time(s)');
 ylabel('TSI(%)');
-legend({'TSI\_left', 'TSI\_right'});
+legend({'TSI(Tissue Saturation Index)'});
 title('TSI Changes with Time');
 grid on;
 

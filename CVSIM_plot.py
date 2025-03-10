@@ -26,8 +26,8 @@ def CVSIM_plot(config):
         y_solver = config.get("y_solver", [])
         t_solver = config.get("t_solver", [])
         # store_oxygen = config.get("store_oxygen", [])
-        Cc_store = config.get("Cc_store", [])
-        Ct_store = config.get("Ct_store", [])
+        # Cc_store = config.get("Cc_store", [])
+        # Ct_store = config.get("Ct_store", [])
 
         import matplotlib.pyplot as plt
         import CVSIM_utils as utils
@@ -51,6 +51,7 @@ def CVSIM_plot(config):
 
                 if oxy_switch == 1:
                         store_oxygen = config.get("store_oxygen", [])
+                        store_SaO2 = config.get("store_SaO2", [])
 
         """
         #IMPORT
@@ -135,7 +136,25 @@ def CVSIM_plot(config):
                 # crb Q (Cerebral inflow)
                 plt.figure(figsize=(10, 6), dpi=300)
                 plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[5, 9000:12000], label=names_store_crb_Q_ic[5], linewidth=0.5, linestyle="-")
-                plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[2, 9000:12000], label=names_store_crb_Q_ic[2], linewidth=0.5, linestyle="-")
+                # plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[2, 9000:12000], label=names_store_crb_Q_ic[2], linewidth=0.5, linestyle="-")
+                # plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[3, 9000:12000], label=names_store_crb_Q_ic[3], linewidth=0.5, linestyle="-")
+                plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[4, 9000:12000], label=names_store_crb_Q_ic[4], linewidth=0.5, linestyle="-")
+
+                # Add vertical line at specific time points (sts_n)
+                plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')
+                plt.xlabel('t (s)')
+                plt.ylabel(r'$Q$ ($mL \times s^{-1}$)')
+                plt.title(r'Plot of cerebral inflow vs time ($t$)')
+                plt.legend(loc='upper left')
+                plt.grid(True)
+                plt.show()
+
+                plt.figure(figsize=(10, 6), dpi=300)
+                plt.plot(t_eval_trans[9000:10000], store_crb_Q_ic[5, 9000:10000], label=names_store_crb_Q_ic[5], linewidth=0.5, linestyle="-")
+                # plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[2, 9000:12000], label=names_store_crb_Q_ic[2], linewidth=0.5, linestyle="-")
+                plt.plot(t_eval_trans[9000:10000], store_crb_Q_ic[3, 9000:10000], label=names_store_crb_Q_ic[3], linewidth=0.5, linestyle="-")
+                # plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[4, 9000:12000], label=names_store_crb_Q_ic[4], linewidth=0.5, linestyle="-")
+
                 # Add vertical line at specific time points (sts_n)
                 plt.axvline(x=sts_n, color='black', linestyle='--', label=r'$t_0$')
                 plt.xlabel('t (s)')
@@ -213,6 +232,19 @@ def CVSIM_plot(config):
                         ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
                         ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
                         plt.show()
+
+                        # plt.figure(figsize=(10, 6), dpi=300)
+                        # plt.plot(t_eval_trans, store_SaO2[0], label='oxygenated hemoglobin')  
+                        # plt.xlabel('Time (s)')
+                        # plt.ylabel('C_t (m3 O2/m3 tissue)')
+                        # plt.title('Tissue Oxygen Concentration vs Time')
+                        # plt.legend(loc='upper left')
+                        # plt.grid(True)
+                        # ax = plt.gca()
+                        # ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+                        # ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+                        # plt.show()
+
 
                 if carotidOn==1:
                         # plot carotid pressure

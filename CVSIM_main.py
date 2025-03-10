@@ -373,7 +373,7 @@ def run_solve2():
     Out_av, Out_wave, Out_solver = solve2(inp_opti)
     global t_solver, y_solver
     global t_mean, MAP, Finap, HR_model, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, store_impulse, store_finap, store_HR, store_crb_Q_ic, store_crb_mca
-    global store_oxygen, store_OHb
+    global store_oxygen, store_HbO2
     
     if cerebralModelOn==1:
         t_mean, MAP, Finap, HR_model, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, store_impulse, store_crb_Q_ic, store_crb_mca, store_oxygen = Out_av[0]
