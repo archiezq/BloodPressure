@@ -52,6 +52,8 @@ def CVSIM_plot(config):
                 if oxy_switch == 1:
                         store_oxygen = config.get("store_oxygen", [])
                         store_SaO2 = config.get("store_SaO2", [])
+                        store_Cc = config.get("store_Cc", [])
+                        store_Ct = config.get("store_Ct", [])
 
         """
         #IMPORT
@@ -222,10 +224,10 @@ def CVSIM_plot(config):
                         plt.show()
 
                         plt.figure(figsize=(10, 6), dpi=300)
-                        plt.plot(t_eval_trans[10000:16000], store_oxygen[0][10000:16000], label='C_t (Oxygen Concentration in Tissue)')  
+                        plt.plot(t_eval_trans[10000:16000], store_oxygen[0][10000:16000], label='C_t (Oxygen Changes in Tissue)')  
                         plt.xlabel('Time (s)')
-                        plt.ylabel('C_t (m3 O2/m3 tissue)')
-                        plt.title('Tissue Oxygen Concentration vs Time')
+                        plt.ylabel('dC_t (m3 O2/m3 tissue)')
+                        plt.title('Tissue Oxygen Changes vs Time')
                         plt.legend(loc='upper left')
                         plt.grid(True)
                         ax = plt.gca()
@@ -233,17 +235,41 @@ def CVSIM_plot(config):
                         ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
                         plt.show()
 
-                        # plt.figure(figsize=(10, 6), dpi=300)
-                        # plt.plot(t_eval_trans, store_SaO2[0], label='oxygenated hemoglobin')  
-                        # plt.xlabel('Time (s)')
-                        # plt.ylabel('C_t (m3 O2/m3 tissue)')
-                        # plt.title('Tissue Oxygen Concentration vs Time')
-                        # plt.legend(loc='upper left')
-                        # plt.grid(True)
+                        plt.figure(figsize=(10, 6), dpi=300)
+                        plt.plot(t_eval_trans[7000:], store_Ct[0][7000:], label='C_t (Oxygen Concentration in Tissue)')  
+                        plt.xlabel('Time (s)')
+                        plt.ylabel('C_t (m3 O2/m3 tissue)')
+                        plt.title('Tissue Oxygen Concentration vs Time')
+                        plt.legend(loc='upper left')
+                        plt.grid(True)
                         # ax = plt.gca()
                         # ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
                         # ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
-                        # plt.show()
+                        plt.show()
+
+                        plt.figure(figsize=(10, 6), dpi=300)
+                        plt.plot(t_eval_trans[7000:], store_Cc[0][7000:], label='C_c (Oxygen Concentration in plasma)')  
+                        plt.xlabel('Time (s)')
+                        plt.ylabel('C_c (m3 O2/m3 tissue)')
+                        plt.title('Plasma Oxygen Concentration vs Time')
+                        plt.legend(loc='upper left')
+                        plt.grid(True)
+                        # ax = plt.gca()
+                        # ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+                        # ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+                        plt.show()
+
+                        plt.figure(figsize=(10, 6), dpi=300)
+                        plt.plot(t_eval_trans[7000:], store_SaO2[0][7000:], label='SaO2 (Oxygen Saturation)')  
+                        plt.xlabel('Time (s)')
+                        plt.ylabel('SaO2 (%)')
+                        plt.title('Oxygen Saturation vs Time')
+                        plt.legend(loc='upper left')
+                        plt.grid(True)
+                        # ax = plt.gca()
+                        # ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+                        # ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+                        plt.show()
 
 
                 if carotidOn==1:
