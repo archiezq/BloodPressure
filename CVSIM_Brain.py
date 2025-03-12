@@ -486,7 +486,7 @@ def solve(scaling, solve_config):
     controlPars.tbv = 70/(np.sqrt((BW/(22*H**2)))) * BW # Lemmens-Bernstein-Brodsky Equation
     TBV=controlPars.tbv*scaling["v_ratio"]
 
-    global k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, C_t, phi_c, phi_t, C_t, C_c, C_O2Hb, C_pa
+    global k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, phi_c, phi_t, C_t, C_c, C_pa
     global V_pa, SaO2, Hb_baseline, L, k, m, b, alpha_p, C_in
 
     # Oxygen transport parameters (Marta's paper equation 4.4)       
@@ -502,13 +502,11 @@ def solve(scaling, solve_config):
     phi_t = 0.988697
 
 
-    C_t = 2.8*10**(-4) # m3 O2 / m3 blood ?? TO BE CHECKED
-    C_c = 3*10**(-3) # ?? TO BE CHECKED
-    C_O2Hb = 2 # umol/L ?? TO BE CHECKED
-    C_pa = C_c  # ?? TO BE CHECKED
+    C_t = 2.8e-4 # m3 O2 / m3 blood ?? TO BE CHECKED
+    C_c = 3e-3 # ?? TO BE CHECKED
     V_pa = 5 # cm3
     SaO2 = 0.97
-    C_in = 3.1*10**(-3) # ?? TO BE CHECKED
+    C_in = 3.1e-3 # ?? TO BE CHECKED
     # q_in = 12.5     # mL blood /second
     # C_oxy_inlet = 0.018 # mol O2 / L blood
 
@@ -749,6 +747,13 @@ def solve(scaling, solve_config):
         consumption = (M_max * C_t) / (C_t + C_50)
 
         return diffusion + consumption
+    
+    def dCc_dt(C_c, C_t, C_in, Q_pa, Q_auto):
+        global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, V_pa
+
+        diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
+        result = Q_pa *C_in / V_pa - diffusion -  Q_auto *C_c / V_pa
+        return result
 
     def dissolved_O2(PO2):
         dissolved_O2 = alpha_b * PO2
@@ -760,16 +765,7 @@ def solve(scaling, solve_config):
     
     def saturation(PO2):
         """从PO2计算SaO2"""
-        return 1 / (1 + np.exp(-k*(PO2 - m))) + b
-    
-    def dCc_dt(C_c, C_t, C_in, Q_pa, Q_auto):
-        global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, V_pa
-
-        diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
-        result = Q_pa *(C_in - C_c) -diffusion - C_c/V_pa * Q_auto
-        return result
-    
-
+        return L / (1 + np.exp(-k*(PO2 - m))) + b
 
     # def hemo2blood(SaO2):
     #     '''
@@ -893,12 +889,6 @@ def solve(scaling, solve_config):
     V[21] = V_micro
     
 
-    # global last_oxy_reset, reset_interval, reset_flag, dt
-    # last_oxy_reset = 0
-    # reset_interval = 3
-    # reset_flag = False
-    # dt = 0.01
-
     """ !!! Start the simulation !!! """
     def esse_cerebral_NEW(t, x_esse):
         global nrr, ncc, nrf, n, n4, HP, V_micro, ElvMIN, ErvMIN, ErvMAX, ElvMAX
@@ -908,7 +898,7 @@ def solve(scaling, solve_config):
         global cc_switch, t_rf, t_rf_onset, t_cc, t_cc_onset, t_resp_onset, impulse
         global para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv, idx_check
         global oxy_switch, k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50, C_t, C_c
-        global last_oxy_reset, reset_interval, C_pa, C_O2Hb, V_pa, C_oxy
+        global C_pa, V_pa, C_oxy
 
         """ Update values """
         V = x_esse[:22]  # Volumes of cardiovascular model
@@ -935,10 +925,7 @@ def solve(scaling, solve_config):
             C_oxy = x_esse[37+carotidOn] # oxygen concentration in the brain
         if oxy_switch == 1 and cerebralVeinsOn==0:
             C_oxy = x_esse[27+carotidOn]
-        # if t - last_oxy_reset >= reset_interval:
-        #     # print(f"Resetting C_oxy at t = {t}")  # 调试用
-        #     C_oxy = C_t  
-        #     last_oxy_reset = t  # 更新上次重置时间
+
 
         crb.P_v = crb.P_vP_ic + crb.P_ic # venous pressure ?
         crb.P_pa = crb.P_paP_ic + crb.P_ic # pial arterioles pressure
@@ -991,33 +978,29 @@ def solve(scaling, solve_config):
         #     # print(dcdt)
         if oxy_switch == 1:
             global SaO2, C_t, C_in
-            
+
             # Calculate current blood oxygen partial pressure
             PO2 = partial_pressure(SaO2)
-            
             # Calculate dissolved oxygen concentration
             C_c_current = dissolved_O2(PO2)
-            
+
             # Calculate rates of change for tissue and plasma oxygen concentrations
             dcdt = dCt_dt(C_t, C_c_current)
             dC_c = dCc_dt(C_c_current, C_t, C_in, crb.Q_pa, crb.Q_auto)
             
-            # Update concentrations based on calculated rates
-            # Use proper time step for integration
+            # Update concentrations
             # controlPars.T = 0.01
-            C_t_new = C_t + dcdt * controlPars.T * 10
+            C_t_new = C_t + dcdt * controlPars.T * 0.5
             C_c_new = C_c_current + dC_c * controlPars.T * 10
-            
-            # Recalculate physiological parameters based on new concentrations
+        
+            # Recalculate
             PO2_new = C_c_new / alpha_b
             SaO2_new = saturation(PO2_new)
-            
-            # Update global variables
             C_t = C_t_new
             SaO2 = SaO2_new
             
-            # Important: Return as a scalar rather than array to avoid dimension issues
-            # The value is later stored in a results array in the solver
+            # Important: Return as a scalar rather than array
+            # later stored in a results array in the solver
             C_oxy = C_c_new
 
 
