@@ -487,26 +487,29 @@ def solve(scaling, solve_config):
     TBV=controlPars.tbv*scaling["v_ratio"]
 
     global k_c, h_c, s_v, alpha_b, alpha_t, M_max, C_50, phi_c, phi_t, C_t, C_c, C_pa
-    global V_pa, SaO2, Hb_baseline, L, k, m, b, alpha_p, C_in
+    global V_pa, SaO2, Hb_baseline, L, k, m, b, C_in
 
     # Oxygen transport parameters (Marta's paper equation 4.4)       
-    k_c = 4.2e-14          # [m^3(O2)/(mmHg·mm·s)]
-    h_c = 1.0e-6              # [m]
-    s_v = 4.74e5         # [1/m]
+    k_c = 4.2e-14          # [m^3(O2)/(mmHg·m^3·s)]
+    h_c = 1e-5              # [m]
+    s_v = 3e5         # [1/m]
     alpha_b = 3.11e-5        # [m^3(O2)/(mmHg·m^3(plasma))]
-    alpha_t = 3.95e-5        # [m^3(O2)/(mmHg·m^3(tissue))]
-    tau = 8.0e-2             # [s]
-    M_max = 2.4*10**(-4) # m3 O2 / s*m3 blood
-    C_50 = 2.6*10**(-5) # m3 O2 / mmHg*m3 blood
-    phi_c = 0.011303
-    phi_t = 0.988697
+    alpha_t = 2.6e-5        # [m^3(O2)/(mmHg·m^3(tissue))]
+    # tau = 8.0e-2             # [s]
+    M_max = 8.2e-4 # m3 O2 / s*m3 blood
+    C_50 = 2.6e-5 # m3 O2 / mmHg*m3 blood
+    phi_c = 1.1303
+    phi_t = 98.8697
+    # phi_c = 1.42
+    # phi_t = 98.58
+    # s_v = 6.61e5
 
 
-    C_t = 2.8e-4 # m3 O2 / m3 blood ?? TO BE CHECKED
-    C_c = 3e-3 # ?? TO BE CHECKED
-    V_pa = 5 # cm3
+    C_t = 7.8e-4 # m3 O2 / m3 tissue ?? TO BE CHECKED
+    C_c = 2.9e-3 # ?? TO BE CHECKED
+    V_pa = 10 # cm3
     SaO2 = 0.97
-    C_in = 3.1e-3 # ?? TO BE CHECKED
+    C_in = 2.95e-3 # ?? TO BE CHECKED
     # q_in = 12.5     # mL blood /second
     # C_oxy_inlet = 0.018 # mol O2 / L blood
 
@@ -516,7 +519,6 @@ def solve(scaling, solve_config):
     k = 0.0676  # 1/mmHg
     m = 17.71   # mmHg
     b = -0.274  # 偏移量
-    alpha_p = 0.0031  # 氧气在血浆中的溶解系数
 
 
 
@@ -657,7 +659,7 @@ def solve(scaling, solve_config):
     global abp_temp, cvp_temp, co_temp, hr_temp, finap_temp, impulse, Out_av, Out_wave, store_t, store_P_muscle, store_P_intra, HR_list
     global store_E, store_crb, store_BP_min, store_BP_max, store_UV,store_P_muscle2
     global store_crb_Q_ic, store_crb_Q_j, store_crb_Q_v, store_crb_Q_out, store_crb_P, store_crb_C, store_crb_R, store_crb_G, store_crb_x, store_crb_mca, store_impulse, store_TBV
-    global store_oxygen, store_SaO2, store_Cc, store_Ct
+    global store_oxygen, store_SaO2, store_Cc, store_Ct, store_diff
     
     # Initialize arrays to store the values
     store_t=[0.0]
@@ -692,6 +694,7 @@ def solve(scaling, solve_config):
     store_SaO2 = np.zeros((1, len(t_eval))) # store oxygen saturation
     store_Cc = np.zeros((1, len(t_eval))) # store oxygen content in the capillaries
     store_Ct = np.zeros((1, len(t_eval))) # store oxygen content in the tissue
+    store_diff = np.zeros((1, len(t_eval))) # store the diffusion of oxygen
 
     # store_Hb = np.zeros((1, len(t_eval))) # store oxygen content in the blood
     crb.Qbrain_buffer = np.full(int(crb_buffer_size/T), crb.Q_n)
@@ -742,22 +745,32 @@ def solve(scaling, solve_config):
         global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50
 
         # diffusion
-        diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
+        conc_diff = (C_c / alpha_b) - (C_t / alpha_t)
+        # if conc_diff > 0:
+        #     diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
+        # else:
+        #     diffusion = 0
+        diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
         # consumption
         consumption = (M_max * C_t) / (C_t + C_50)
 
-        return diffusion + consumption
+        return diffusion - consumption
     
     def dCc_dt(C_c, C_t, C_in, Q_pa, Q_auto):
         global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, V_pa
 
-        diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * ((C_c / alpha_b) - (C_t / alpha_t))
+        conc_diff = (C_c / alpha_b) - (C_t / alpha_t)
+        # if conc_diff > 0:
+        #     diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
+        # else:
+        #     diffusion = 0
+        diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
         result = Q_pa *C_in / V_pa - diffusion -  Q_auto *C_c / V_pa
         return result
 
     def dissolved_O2(PO2):
-        dissolved_O2 = alpha_b * PO2
-        return dissolved_O2
+        concentration = alpha_b * PO2
+        return concentration
     
     def partial_pressure(SaO2):
         """从SaO2计算PO2"""
@@ -767,16 +780,6 @@ def solve(scaling, solve_config):
         """从PO2计算SaO2"""
         return L / (1 + np.exp(-k*(PO2 - m))) + b
 
-    # def hemo2blood(SaO2):
-    #     '''
-    #     Calculate the total oxygen concentration of the blood using 
-    #     the hemoglobin concentration, hemoglobin saturation (SaO2), and PO2.
-    #     '''
-    #     global Hb
-    #     Hb = 15 # g/dL
-    #     o2 = (1.34*15*SaO2)+0.0031*17.71+0.0031/0.0676*np.log(1.251/(SaO2+0.274)-1) # ml O2/dL blood
-    #     concentration = o2/100 # m3 O2/m3 blood
-    #     return concentration
 
     def ABRreflexDef():
         global HP, HR, ErvMAX, ElvMAX
@@ -966,16 +969,7 @@ def solve(scaling, solve_config):
                 alphav_respv = (alphav_respv_new-alphav_respv_old)*t_rf/reflexPars.S_GRAN+alphav_respv_old
                 CPRreflexDef()
         
-        # if oxy_switch == 1:
-        #     global SaO2, C_in
-        #     PO2 = partial_pressure(SaO2)
-        #     C_oxy = dissolved_O2(PO2)
-        #     dcdt = dCt_dt(C_oxy)
-        #     dccdt = dCc_dt(C_oxy)
-        #     C_oxy = C_oxy + dccdt
-        #     PO2 = C_oxy / alpha_b
-        #     SaO2 = saturation(PO2)
-        #     # print(dcdt)
+
         if oxy_switch == 1:
             global SaO2, C_t, C_in
 
@@ -987,20 +981,23 @@ def solve(scaling, solve_config):
             # Calculate rates of change for tissue and plasma oxygen concentrations
             dcdt = dCt_dt(C_t, C_c_current)
             dC_c = dCc_dt(C_c_current, C_t, C_in, crb.Q_pa, crb.Q_auto)
-            
+
+            conc_diff = (C_c / alpha_b) - (C_t / alpha_t)
+            diff = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
+
             # Update concentrations
             # controlPars.T = 0.01
-            C_t_new = C_t + dcdt * controlPars.T * 0.5
-            C_c_new = C_c_current + dC_c * controlPars.T * 10
-        
+            C_t_new = C_t + dcdt * controlPars.T
+            C_c_new = C_c_current + dC_c * controlPars.T
+            C_t_new = max(C_t_new, 1e-8)
+            C_c_new = max(C_c_new, 1e-8)
+
             # Recalculate
             PO2_new = C_c_new / alpha_b
             SaO2_new = saturation(PO2_new)
+
             C_t = C_t_new
             SaO2 = SaO2_new
-            
-            # Important: Return as a scalar rather than array
-            # later stored in a results array in the solver
             C_oxy = C_c_new
 
 
@@ -1651,6 +1648,7 @@ def solve(scaling, solve_config):
             store_SaO2[:, idx] = SaO2
             store_Cc[:, idx] = C_oxy
             store_Ct[:, idx] = C_t
+            store_diff[:, idx] = diff
 
             if cerebralVeinsOn==1:
                 store_crb_Q_j[:, idx] = crb.Q_c3, crb.Q_c2, crb.Q_c1, crb.Q_jr3, crb.Q_jr2, crb.Q_jr1, crb.Q_jl3, crb.Q_jl2, crb.Q_jl1 # jugular flows
@@ -1745,7 +1743,7 @@ def solve(scaling, solve_config):
     store_V_mca_min = extremes_V_mca[:,2]
     Out_av.append([mean_t, map, store_finap, store_HR, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, 
                    store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, 
-                   store_impulse, store_crb_Q_ic, store_crb_mca, store_oxygen, store_SaO2, store_Cc, store_Ct])
+                   store_impulse, store_crb_Q_ic, store_crb_mca, store_oxygen, store_SaO2, store_Cc, store_Ct, store_diff])
     Timer.stop()
 
     outputP = output9 = outputP_intra = output10 = outputPg = outputE = []

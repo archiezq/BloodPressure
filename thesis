@@ -1,0 +1,39 @@
+## description
+Flow simulation and Regulatory mechanisms
+Blood pressure in the human body is a highly regulated systems with a number of feedback mechanisms. Based on existing systems dynamics models of systemic blood flow, you will be developing advanced models for two such feedback mechanisms, the baroreflex and the cerebral autoregulation. You will carry out extensive literature studies on such feedback mechanism, on early mathematical models developed more than 20 years ago, and then develop and implement a fit for purpose model for both feedback mechanism. You will carry out sensitivity analysis and uncertainty quantification, and validate your models for a population of elderly people. Through our collaboration with the Geriatrics department of the Amsterdam University Medical Centers (location AMC) you will obtain retrospective data sets for you validation. You will then apply your model in relation to predicting Orthostatic Hypertension in elderly individuals.
+
+## Abstract
+
+Orthostatic hypotension is a form of low blood pressure that happens when standing after sitting or lying down. The suddenly blood pressure drops can lead to dizziness and a higher risk of falls, especially in elderly people. While there are many research about the mechanism of pressure regulation, but most of them are focused on the hemodynamic baroreflex or cerebral autoregulation instead of combining both. This research aims to develop an integrated computational model which considers both baroreflex and cerebral autoregulation mechanisms, and also takes into account the oxygen transport dynamics. In this way, we can have a comprehensive understanding of the blood pressure regulation and the oxygen supply and consumption of the brain. We will carry a sit-to-stand test to observe the changes of mean arterial pressure, heart rate, and oxygen concentration. This model will be validated by comparing the simulated results with the clinical data collected at the Amsterdam Medical Center(AMC) Geriatrics Department. Finally, we developed a diagnostic tool to identify the risk of falls in elderly patients.
+
+## Introduction
+
+Maintain a stable blood pressure is essential for the proper functioning of the body. Usually our blood pressure ranges from 80mmHg to 120mmHg. If our blood pressure is too low, we will feel dizzy and even pass out. If our blood pressure is too high, we will feel like our heart is pounding and our blood is rushing to our head. To control our blood pressure, our body has a complex system to regulate it. Blood pressure is influenced by cardiac output, systemic vascular resistance, blood volume and arterial stiffness, and varies depending on person's situation, emotional state, activity and relative health or disease state. In the short term, blood pressure is regulated by baroreceptors, which act as a feedback mechanism to maintain blood pressure stability.
+
+Blood pressure regulation is a complex process which are very important to keep blood flow and blood pressure stable in our body. The heart, blood vessels, and nervous system work together to adjust blood pressure based on the body's needs. When this system does not respond properly, problems like orthostatic hypotension (OH) can occur. OH happens when blood pressure drops suddenly when we stand up after a long time sitting or lying down, leading to dizziness, confusion, and a higher risk of falls, especially in elderly people. This condition is a serious health concern because it increases the chance of injury and reduces the quality of life.
+
+To better understand how blood pressure is regulated, we need computational models that capture the key processes involved in blood pressure control. Existing models often focus on either the overall cardiovascular system(hemodynamic baroreflex)[Van Loon][Heldt] or the brain’s blood flow regulation(cerebral autoregulation)[Ursino], but few models combine both. Another important factor is oxygen transport, which plays a key role in brain function. However, many models do not fully account for how blood pressure changes affect oxygen supply to the brain. A model that connects baroreflex control, cerebral autoregulation, and oxygen transport could improve our ability to study conditions like OH and blood pressure control mechanisms.
+
+This research aims to develop a computational model that combines a 21-compartment cardiovascular model[Van Loon][Heldt] with a cerebral autoregulation model[Ursino] to simulate how blood pressure is controlled at both the systemic and brain levels. The model will also include oxygen transport dynamics to analyze how blood pressure changes impact oxygen delivery to the brain and the consumption of oxygen by the brain tissue. To explore the effects of OH, we will use a sit to stand test to simulate the pressure change from a lying to a standing position, also the oxygen consumption of the brain tissue. 
+
+To valid our model and ensure accuracy, we will compare the simulated results with the clinical data from the AMC(Amsterdam Medical Center) Geriatrics Department, specifically stand test measurements from elderly patients. By integrating these different physiological processes, this model will help us understand why some people, especially elderly individuals, experience severe blood pressure drops when they stand up. In addition, this research aims to create a diagnostic tool that can assess the risk of falls due to OH, which could help doctors and caregivers take early action to prevent injuries. This work will contribute to both medical research and clinical practice, improving the way we study and manage blood pressure regulation problems.
+
+
+## Methodology
+
+### Hemodynamic Baroreflex
+Baroreflex, also named as the baroreceptor reflex, is a negative feedback control mechanism that your body takes a series of actions to keep your blood pressure in a normal range, in response to the position changes like standing up from a lying or sitting position. It's one of the most important feedback mechanism to maintain blood pressure stability in short term.\cite{batzel2011time}\cite{NIH}. The work of Baroreflex depends on baroreceptors, the pressure sensors, which located in several regions including the carotid sinus and aortic arch\cite{chapleau1995mechanisms}. These baroreceptors are stretch-sensitive mechanoreceptors that respond to the deformation of the vessel walls. When blood pressure increases, it causes the vessel walls to stretch, which activates the baroreceptors. Conversely, when blood pressure decreases, the vessel walls relax, reducing baroreceptor activation\cite{dampney2016central}.
+
+Armstrong M, Kerndt CC, Moore RA. Physiology, Baroreceptors. [Updated 2023 Mar 6]. In: StatPearls [Internet]. Treasure Island (FL): StatPearls Publishing; 2025 Jan-. Available from: https://www.ncbi.nlm.nih.gov/books/NBK538172/
+
+The neural signals from these baroreceptors are transmitted to the nucleus tractus solitarius (NTS) in the brainstem, which then coordinates with other cardiovascular control centers to initiate appropriate autonomic responses. Through this pathway, the baroreflex can rapidly adjust heart rate, cardiac contractility, and blood flow to maintain blood pressure stable\cite{chapleau1995mechanisms}.
+
+Heldt et al. proposed a model of baroreflex control of heart rate based on the neural control of the heart rate\cite{heldt2002computational}. The model consists of a set of differential equations that describe the relationship between blood pressure and heart rate through sympathetic and parasympathetic pathways, as shown in Figure \ref{fig:baroreflex_control}. The model includes baroreceptor firing rate, sympathetic and parasympathetic nerve activities, and their effects on heart rate regulation.
+
+
+
+### Cerebral Autoregulation
+
+### Oxygen Transport
+
+

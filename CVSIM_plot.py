@@ -54,6 +54,7 @@ def CVSIM_plot(config):
                         store_SaO2 = config.get("store_SaO2", [])
                         store_Cc = config.get("store_Cc", [])
                         store_Ct = config.get("store_Ct", [])
+                        store_diff = config.get("store_diff", [])
 
         """
         #IMPORT
@@ -212,9 +213,9 @@ def CVSIM_plot(config):
 
                         # plt.plot(t_eval_trans[9000:12000], store_oxygen[0, 9000:12000], label='C_t (Oxygen Concentration in Tissue)')
                         # plt.plot(t_eval_trans[:1000], store_oxygen[0][:1000], label='C_t (Oxygen Concentration in Tissue)')
-                        plt.plot(t_eval_trans[7000:], store_oxygen[0][7000:], label='C_t (Oxygen Concentration in Tissue)')
+                        plt.plot(t_eval_trans[7000:], store_oxygen[0][7000:], label='dC_t (Oxygen Concentration in Tissue)')
                         plt.xlabel('Time (s)')
-                        plt.ylabel('C_t (m3 O2/m3 tissue)')
+                        plt.ylabel('dC_t (m3 O2/m3 tissue)')
                         plt.title('Tissue Oxygen Concentration vs Time')
                         plt.legend(loc='upper left')
                         plt.grid(True)
@@ -224,7 +225,7 @@ def CVSIM_plot(config):
                         plt.show()
 
                         plt.figure(figsize=(10, 6), dpi=300)
-                        plt.plot(t_eval_trans[10000:16000], store_oxygen[0][10000:16000], label='C_t (Oxygen Changes in Tissue)')  
+                        plt.plot(t_eval_trans[10000:16000], store_oxygen[0][10000:16000], label='dC_t (Oxygen Changes in Tissue)')  
                         plt.xlabel('Time (s)')
                         plt.ylabel('dC_t (m3 O2/m3 tissue)')
                         plt.title('Tissue Oxygen Changes vs Time')
@@ -236,7 +237,7 @@ def CVSIM_plot(config):
                         plt.show()
 
                         plt.figure(figsize=(10, 6), dpi=300)
-                        plt.plot(t_eval_trans[7000:], store_Ct[0][7000:], label='C_t (Oxygen Concentration in Tissue)')  
+                        plt.plot(t_eval_trans[:], store_Ct[0][:], label='C_t (Oxygen Concentration in Tissue)')  
                         plt.xlabel('Time (s)')
                         plt.ylabel('C_t (m3 O2/m3 tissue)')
                         plt.title('Tissue Oxygen Concentration vs Time')
@@ -248,10 +249,22 @@ def CVSIM_plot(config):
                         plt.show()
 
                         plt.figure(figsize=(10, 6), dpi=300)
-                        plt.plot(t_eval_trans[7000:], store_Cc[0][7000:], label='C_c (Oxygen Concentration in plasma)')  
+                        plt.plot(t_eval_trans[:], store_Cc[0][:], label='C_c (Oxygen Concentration in plasma)')  
                         plt.xlabel('Time (s)')
-                        plt.ylabel('C_c (m3 O2/m3 tissue)')
+                        plt.ylabel('C_c (m3 O2/m3 plasma)')
                         plt.title('Plasma Oxygen Concentration vs Time')
+                        plt.legend(loc='upper left')
+                        plt.grid(True)
+                        ax = plt.gca()
+                        ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+                        ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+                        plt.show()
+
+                        plt.figure(figsize=(10, 6), dpi=300)
+                        plt.plot(t_eval_trans[:], store_diff[0][:], label='diff (Oxygen diffusion)')  
+                        plt.xlabel('Time (s)')
+                        plt.ylabel('diff (m3 O2/m3 plasma)')
+                        plt.title('Plasma Oxygen diffusion vs Time')
                         plt.legend(loc='upper left')
                         plt.grid(True)
                         ax = plt.gca()
