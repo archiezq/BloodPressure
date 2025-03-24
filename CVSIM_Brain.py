@@ -492,11 +492,11 @@ def solve(scaling, solve_config):
     # Oxygen transport parameters (Marta's paper equation 4.4)       
     k_c = 4.2e-14          # [m^3(O2)/(mmHg·m^3·s)]
     h_c = 1e-5              # [m]
-    s_v = 3e5         # [1/m]
+    s_v = 4.7e5         # [1/m]
     alpha_b = 3.11e-5        # [m^3(O2)/(mmHg·m^3(plasma))]
     alpha_t = 2.6e-5        # [m^3(O2)/(mmHg·m^3(tissue))]
     # tau = 8.0e-2             # [s]
-    M_max = 8.2e-4 # m3 O2 / s*m3 blood
+    M_max = 8e-4 # m3 O2 / s*m3 tissue
     C_50 = 2.6e-5 # m3 O2 / mmHg*m3 blood
     phi_c = 1.1303
     phi_t = 98.8697
@@ -505,9 +505,9 @@ def solve(scaling, solve_config):
     # s_v = 6.61e5
 
 
-    C_t = 7.8e-4 # m3 O2 / m3 tissue ?? TO BE CHECKED
+    C_t = 9e-4 # m3 O2 / m3 tissue ?? TO BE CHECKED
     C_c = 2.9e-3 # ?? TO BE CHECKED
-    V_pa = 10 # cm3
+    V_pa = 15 # cm3
     SaO2 = 0.97
     C_in = 2.95e-3 # ?? TO BE CHECKED
     # q_in = 12.5     # mL blood /second
@@ -659,7 +659,7 @@ def solve(scaling, solve_config):
     global abp_temp, cvp_temp, co_temp, hr_temp, finap_temp, impulse, Out_av, Out_wave, store_t, store_P_muscle, store_P_intra, HR_list
     global store_E, store_crb, store_BP_min, store_BP_max, store_UV,store_P_muscle2
     global store_crb_Q_ic, store_crb_Q_j, store_crb_Q_v, store_crb_Q_out, store_crb_P, store_crb_C, store_crb_R, store_crb_G, store_crb_x, store_crb_mca, store_impulse, store_TBV
-    global store_oxygen, store_SaO2, store_Cc, store_Ct, store_diff
+    global store_oxygen, store_SaO2, store_Cc, store_Ct, store_diff, store_dc
     
     # Initialize arrays to store the values
     store_t=[0.0]
@@ -695,6 +695,7 @@ def solve(scaling, solve_config):
     store_Cc = np.zeros((1, len(t_eval))) # store oxygen content in the capillaries
     store_Ct = np.zeros((1, len(t_eval))) # store oxygen content in the tissue
     store_diff = np.zeros((1, len(t_eval))) # store the diffusion of oxygen
+    store_dc = np.zeros((1, len(t_eval))) # store the change of oxygen concentration in the plasma
 
     # store_Hb = np.zeros((1, len(t_eval))) # store oxygen content in the blood
     crb.Qbrain_buffer = np.full(int(crb_buffer_size/T), crb.Q_n)
@@ -765,7 +766,7 @@ def solve(scaling, solve_config):
         # else:
         #     diffusion = 0
         diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
-        result = Q_pa *C_in / V_pa - diffusion -  Q_auto *C_c / V_pa
+        result = Q_pa *C_in / V_pa - diffusion -  (Q_auto) *C_c / V_pa
         return result
 
     def dissolved_O2(PO2):
@@ -987,8 +988,8 @@ def solve(scaling, solve_config):
 
             # Update concentrations
             # controlPars.T = 0.01
-            C_t_new = C_t + dcdt * controlPars.T
-            C_c_new = C_c_current + dC_c * controlPars.T
+            C_t_new = C_t + dcdt*controlPars.T*6
+            C_c_new = C_c_current + dC_c*controlPars.T*3
             C_t_new = max(C_t_new, 1e-8)
             C_c_new = max(C_c_new, 1e-8)
 
@@ -1649,6 +1650,7 @@ def solve(scaling, solve_config):
             store_Cc[:, idx] = C_oxy
             store_Ct[:, idx] = C_t
             store_diff[:, idx] = diff
+            store_dc[:, idx] = dC_c
 
             if cerebralVeinsOn==1:
                 store_crb_Q_j[:, idx] = crb.Q_c3, crb.Q_c2, crb.Q_c1, crb.Q_jr3, crb.Q_jr2, crb.Q_jr1, crb.Q_jl3, crb.Q_jl2, crb.Q_jl1 # jugular flows
@@ -1743,7 +1745,7 @@ def solve(scaling, solve_config):
     store_V_mca_min = extremes_V_mca[:,2]
     Out_av.append([mean_t, map, store_finap, store_HR, store_BP_max, store_BP_min, HR_list, store_P, store_P_intra, 
                    store_P_muscle, tmean_mca, store_V_mca_max, store_V_mca_min, store_P_muscle2, store_E, store_UV, store_TBV, 
-                   store_impulse, store_crb_Q_ic, store_crb_mca, store_oxygen, store_SaO2, store_Cc, store_Ct, store_diff])
+                   store_impulse, store_crb_Q_ic, store_crb_mca, store_oxygen, store_SaO2, store_Cc, store_Ct, store_diff, store_dc])
     Timer.stop()
 
     outputP = output9 = outputP_intra = output10 = outputPg = outputE = []
