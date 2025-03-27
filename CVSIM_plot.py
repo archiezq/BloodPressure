@@ -36,6 +36,7 @@ def CVSIM_plot(config):
         from reflexPars import _init_reflex # Get the control parameters loaded.
         from adultPars_carotid import _init_pars # Get the parameters for resistance, elastance and uvolume
         from matplotlib.ticker import ScalarFormatter
+        import pandas as pd
 
         reflexPars = _init_reflex(scaling); # Get all the reflex parameters stored to the list 'reflexPars'.
         subjectPars = _init_pars(scaling); # Here the compartments parameters are assigned
@@ -506,5 +507,6 @@ def CVSIM_plot(config):
         plt.grid(False)
         plt.show()
 
-        
+        pd.DataFrame(t_eval_trans).to_csv('t_eval_trans.csv', index=False)
+        pd.DataFrame(store_SaO2[0]).to_csv('store_SaO2.csv', index=False)
         return

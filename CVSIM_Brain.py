@@ -506,10 +506,10 @@ def solve(scaling, solve_config):
 
 
     C_t = 9e-4 # m3 O2 / m3 tissue ?? TO BE CHECKED
-    C_c = 2.9e-3 # ?? TO BE CHECKED
-    V_pa = 15 # cm3
-    SaO2 = 0.97
-    C_in = 2.95e-3 # ?? TO BE CHECKED
+    C_c = 1.1e-3 # ?? TO BE CHECKED
+    V_pa = 5 # cm3
+    SaO2 = 0.70
+    C_in = 1.12e-3 # ?? TO BE CHECKED
     # q_in = 12.5     # mL blood /second
     # C_oxy_inlet = 0.018 # mol O2 / L blood
 

@@ -19,6 +19,52 @@ This research aims to develop a computational model that combines a 21-compartme
 To valid our model and ensure accuracy, we will compare the simulated results with the clinical data from the AMC(Amsterdam Medical Center) Geriatrics Department, specifically stand test measurements from elderly patients. By integrating these different physiological processes, this model will help us understand why some people, especially elderly individuals, experience severe blood pressure drops when they stand up. In addition, this research aims to create a diagnostic tool that can assess the risk of falls due to OH, which could help doctors and caregivers take early action to prevent injuries. This work will contribute to both medical research and clinical practice, improving the way we study and manage blood pressure regulation problems.
 
 
+## Literature Review
+
+
+### Blood
+In our human body, blood plays a crucial role in maintaining the body's fluid and electrolyte balance, and also helps transport hormones and other substances throughout the body. Blood is the medium that carries oxygen, nutrients, and waste products to and from our cells, carrying oxygen is the most important function of blood. Blood can be devided into two parts: plasma and blood cells. For blood cells, it includes red blood cells, white blood cells and platelets. Blood depends on above components to maintain our body's normal function.
+
+#### Plasma
+
+Plasma is the liquid component of blood that carries blood cells and nutrients to various parts of the body. Our body contains about 2750 to 3300 mL plasma, which is about 55\% of the blood volume. The plasma is composed of water, electrolytes, proteins, and other substances. Water occupies 90\% of the plasma while the rest occupies by other substances. Plasma is similar to a reservoir, which can provide extra water to the tissues that need it, or absorb the excess water from the tissues. When the body tissues need extra water, the water in the plasma is the first choice to meet the demand. Also, plasma can prevent the blood vessels from collapsing and forming blood clots by continuous flow through the blood vessels, which helps to maintain blood pressure stability.
+
+#### Red Blood Cells
+Red blood cells, also named as erythrocytes, account for about 40\% of the blood volume. The RBCs are red because they contain hemoglobin(Hb), a protein that contains iron and can bind to oxygen molecules. Hemoglobin is responsible for carrying oxygen from the lungs to the body's tissues and removing waste products like carbon dioxide. Hb binds to oxygen, forming oxygenated hemoglobin(HbO2), in the lungs and this allows hemoglobin to transport about 98\% of the oxygen through the body, while the rest of the oxygen is physically dissolved in the plasma. 
+
+The capacity of carrying oxygen is determined by the amount of hemoglobin in the RBCs. The hemoglobin concentration in the blood is about 150 g/L in adult, and each hemoglobin molecule can most bind to 4 oxygen molecules. After the oxygenated hemoglobin released oxygen, some of the hemoglobin not bound to any oxygen, forming deoxygenated hemoglobin(Hb).
+While oxygen are consumed, carbon dioxide(CO2) are produced. CO2 is a kind of waste product that is harmful to our body, and it should be removed from the body as soon as possible. The deoxygenated hemoglobin can bind to the carbon dioxide, forming carbaminohemoglobin(HbCO2).  the carbon dioxide will be transported to the lungs and exhaled out. About 23\% of the CO2 is carried by the deoxygenated hemoglobin, while most of carbon dioxide are exist as bicarbonate and then carried in plasma.
+
+
+### Cerebral Autoregulation
+Cerebral autoregulation is also a negative feedback mechanism that the cerebral vasculature maintains a relatively constant blood flow to the brain despite changes in blood pressure(cerebral perfusion pressure). It's essential for the brain to maintain a stable blood flow to provide enough oxygen and nutrients to the brain tissue.
+
+Cerebral blood flow is depends on the cerebral perfusion pressure(CPP) and cerebrovascular resistance(CVR). Cerebral perfusion pressure(CPP) is the pressure difference between the mean arterial pressure(MAP) and the intracranial pressure(ICP). The cerebrovascular resistance(CVR) is the resistance of the blood flow through the cerebral vasculature, which is influenced by mean arterial pressure(MAP). There are the relationship between CPP, CVR and cerebral blood flow(CBF) as follows:
+
+\begin{equation}
+    CBF = \frac{CPP}{CVR} = \frac{MAP - ICP}{CVR}
+\end{equation}
+
+
+
+### Oxygen Transport and Metabolism
+
+
+###
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Methodology
 
 ### Hemodynamic Baroreflex
