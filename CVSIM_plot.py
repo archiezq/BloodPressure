@@ -141,8 +141,8 @@ def CVSIM_plot(config):
                 # crb Q (Cerebral inflow)
                 plt.figure(figsize=(10, 6), dpi=300)
                 plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[5, 9000:12000], label=names_store_crb_Q_ic[5], linewidth=0.5, linestyle="-")
-                # plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[2, 9000:12000], label=names_store_crb_Q_ic[2], linewidth=0.5, linestyle="-")
-                # plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[3, 9000:12000], label=names_store_crb_Q_ic[3], linewidth=0.5, linestyle="-")
+                plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[0, 9000:12000], label=names_store_crb_Q_ic[0], linewidth=0.5, linestyle="-")
+                plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[3, 9000:12000], label=names_store_crb_Q_ic[3], linewidth=0.5, linestyle="-")
                 plt.plot(t_eval_trans[9000:12000], store_crb_Q_ic[4, 9000:12000], label=names_store_crb_Q_ic[4], linewidth=0.5, linestyle="-")
 
                 # Add vertical line at specific time points (sts_n)

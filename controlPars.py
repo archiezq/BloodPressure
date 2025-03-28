@@ -30,6 +30,7 @@ class _init_control(object):
         self.T = 0.01; # Sample frequency = 1000hz
         self.N = round((self.tmax-self.tmin)/self.T)+1;
         self.RR = 12; # respiratory rate
+        self.DF = 0.3; # Diffusion rate
         self.Pintra_t0 = -2; # Start negative intra-thoracic pressure
         
         self.Kn=0.5792;

@@ -449,7 +449,7 @@ def solve(scaling, solve_config):
     HP=60/HR
     
     RR=controlPars.RR
-    
+    DF=controlPars.DF
     #P_intra_t0=controlPars.P_intra_t0;
     P_intra_t0=-4
     rrp=60/controlPars.RR; # Respiratory rate period
@@ -505,7 +505,7 @@ def solve(scaling, solve_config):
     # s_v = 6.61e5
 
 
-    C_t = 9e-4 # m3 O2 / m3 tissue ?? TO BE CHECKED
+    C_t = 8.5e-4 # m3 O2 / m3 tissue ?? TO BE CHECKED
     C_c = 1.1e-3 # ?? TO BE CHECKED
     V_pa = 5 # cm3
     SaO2 = 0.70
@@ -633,13 +633,14 @@ def solve(scaling, solve_config):
     Assign the parameters
     """
     #CARDIAC CYCLE TIMER AND COUTER INITIALIZATIONS
-    global t_cc_onset, cc_switch, t_rf_onset, idx_check, t_resp_onset
+    global t_cc_onset, cc_switch, t_rf_onset, idx_check, t_resp_onset, t_diff_onset
     t_cc_onset = np.array([0.0])
     cc_switch = 0
     t_rf_onset = 0
     idx_check = -1
     t_resp_onset = 0.0
-    
+    t_diff_onset = 0.0
+
     """
      STATE VARIABLE INITIALIZATION
     """
@@ -757,7 +758,7 @@ def solve(scaling, solve_config):
 
         return diffusion - consumption
     
-    def dCc_dt(C_c, C_t, C_in, Q_pa, Q_auto):
+    def dCc_dt(C_c, C_t, C_in, Q_auto, Q_f):
         global k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, V_pa
 
         conc_diff = (C_c / alpha_b) - (C_t / alpha_t)
@@ -766,7 +767,7 @@ def solve(scaling, solve_config):
         # else:
         #     diffusion = 0
         diffusion = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
-        result = Q_pa *C_in / V_pa - diffusion -  (Q_auto) *C_c / V_pa
+        result = Q_auto *C_in / V_pa - diffusion -  (Q_f) *C_c / V_pa
         return result
 
     def dissolved_O2(PO2):
@@ -902,7 +903,7 @@ def solve(scaling, solve_config):
         global cc_switch, t_rf, t_rf_onset, t_cc, t_cc_onset, t_resp_onset, impulse
         global para_resp,beta_resp,alpha_resp,alpha_respv,alphav_resp,alphav_respv, idx_check
         global oxy_switch, k_c, s_v, phi_c, h_c, phi_t, alpha_b, alpha_t, M_max, C_50, C_t, C_c
-        global C_pa, V_pa, C_oxy
+        global C_pa, V_pa, C_oxy, t_diff, t_diff_onset
 
         """ Update values """
         V = x_esse[:22]  # Volumes of cardiovascular model
@@ -969,37 +970,88 @@ def solve(scaling, solve_config):
                 alphav_resp = (alphav_resp_new-alphav_resp_old)*t_rf/reflexPars.S_GRAN+alphav_resp_old
                 alphav_respv = (alphav_respv_new-alphav_respv_old)*t_rf/reflexPars.S_GRAN+alphav_respv_old
                 CPRreflexDef()
+
         
+        # t_diff = t - t_diff_onset
+        # dcdt = 0
+        # dC_c = 0
+        
+        # if oxy_switch == 1:
+        #     global SaO2, C_t, C_in, C_c
 
-        if oxy_switch == 1:
-            global SaO2, C_t, C_in
+        #     # Calculate current blood oxygen partial pressure
+        #     PO2 = partial_pressure(SaO2)
+        #     # Calculate dissolved oxygen concentration
+        #     C_c_current = dissolved_O2(PO2)
 
-            # Calculate current blood oxygen partial pressure
-            PO2 = partial_pressure(SaO2)
-            # Calculate dissolved oxygen concentration
-            C_c_current = dissolved_O2(PO2)
+        #     # Calculate rates of change for tissue and plasma oxygen concentrations
+        #     dcdt = dCt_dt(C_t, C_c_current)
+        #     dC_c = dCc_dt(C_c_current, C_t, C_in, crb.Q_pa, crb.Q_auto)
 
-            # Calculate rates of change for tissue and plasma oxygen concentrations
-            dcdt = dCt_dt(C_t, C_c_current)
-            dC_c = dCc_dt(C_c_current, C_t, C_in, crb.Q_pa, crb.Q_auto)
+        #     conc_diff = (C_c / alpha_b) - (C_t / alpha_t)
+        #     diff = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
 
-            conc_diff = (C_c / alpha_b) - (C_t / alpha_t)
-            diff = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
+        #     # 每个时间步都进行小幅度更新，避免大的跳变
+        #     dt = controlPars.T  # 使用基本时间步长
+            
+        #     # 更新浓度
+        #     C_t_new = C_t + dcdt*dt
+        #     C_c_new = C_c_current + dC_c*dt
+            
+        #     # 确保浓度在合理范围内
+        #     C_t_new = np.clip(C_t_new, 1e-8, 1.0)  # 设置上下限
+        #     C_c_new = np.clip(C_c_new, 1e-8, 1.0)
 
-            # Update concentrations
-            # controlPars.T = 0.01
-            C_t_new = C_t + dcdt*controlPars.T*6
-            C_c_new = C_c_current + dC_c*controlPars.T*3
-            C_t_new = max(C_t_new, 1e-8)
-            C_c_new = max(C_c_new, 1e-8)
+        #     # 更新全局变量
+        #     C_t = C_t_new
+        #     C_c = C_c_new
+        #     C_oxy = C_c_new
 
-            # Recalculate
-            PO2_new = C_c_new / alpha_b
-            SaO2_new = saturation(PO2_new)
+        #     # 只在达到扩散时间时更新SaO2
+        #     if t_diff >= controlPars.DF:
+        #         # Recalculate
+        #         PO2_new = C_c_new / alpha_b
+        #         SaO2_new = saturation(PO2_new)
+        #         SaO2 = SaO2_new
+                
+        #         # 重置时间计数
+        #         t_diff_onset = t
 
-            C_t = C_t_new
-            SaO2 = SaO2_new
-            C_oxy = C_c_new
+
+        # t_diff = t - t_diff_onset
+        # if t_diff >= controlPars.DF and oxy_switch == 1:
+        #     t_diff_onset = t
+        #     t_diff = 0
+
+        # if oxy_switch == 1:
+        #     global SaO2, C_t, C_in, t_diff
+
+        #     # Calculate current blood oxygen partial pressure
+        #     PO2 = partial_pressure(SaO2)
+        #     # Calculate dissolved oxygen concentration
+        #     C_c_current = dissolved_O2(PO2)
+
+        #     # Calculate rates of change for tissue and plasma oxygen concentrations
+        #     dcdt = dCt_dt(C_t, C_c_current)
+        #     dC_c = dCc_dt(C_c_current, C_t, C_in, crb.Q_auto, crb.Q_f)
+
+        #     conc_diff = (C_c / alpha_b) - (C_t / alpha_t)
+        #     diff = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
+
+        #     # Update concentrations
+        #     # controlPars.T = 0.01
+        #     C_t_new = C_t + dcdt*controlPars.T*6
+        #     C_c_new = C_c_current + dC_c*controlPars.T*3
+        #     C_t_new = max(C_t_new, 1e-8)
+        #     C_c_new = max(C_c_new, 1e-8)
+
+        #     # Recalculate
+        #     PO2_new = C_c_new / alpha_b
+        #     SaO2_new = saturation(PO2_new)
+
+        #     C_t = C_t_new
+        #     SaO2 = SaO2_new
+        #     C_oxy = C_c_new
 
 
         """ Cardiac Cycle (CC) """
@@ -1249,6 +1301,53 @@ def solve(scaling, solve_config):
 
         # calculating flow in the venous sinus
         crb.Q_vs = crb.G_vs*(crb.P_v - crb.P_vs)
+
+
+        t_diff = t - t_diff_onset
+        dcdt = 0
+        dC_c = 0
+        
+        if oxy_switch == 1:
+            global SaO2, C_t, C_in, C_c
+
+            # Calculate current blood oxygen partial pressure
+            PO2 = partial_pressure(SaO2)
+            # Calculate dissolved oxygen concentration
+            C_c_current = dissolved_O2(PO2)
+
+            # Calculate rates of change for tissue and plasma oxygen concentrations
+            dcdt = dCt_dt(C_t, C_c_current)
+            dC_c = dCc_dt(C_c_current, C_t, C_in, crb.Q_auto, crb.Q_vs)
+
+            conc_diff = (C_c / alpha_b) - (C_t / alpha_t)
+            diff = (k_c * s_v * phi_c / (h_c * phi_t)) * conc_diff
+
+            # 每个时间步都进行小幅度更新，避免大的跳变
+            dt = controlPars.T  # 使用基本时间步长
+            
+            # 更新浓度
+            C_t_new = C_t + dcdt*dt
+            C_c_new = C_c_current + dC_c*dt
+            
+            # 确保浓度在合理范围内
+            C_t_new = np.clip(C_t_new, 1e-8, 1.0)  # 设置上下限
+            C_c_new = np.clip(C_c_new, 1e-8, 1.0)
+
+            # 更新全局变量
+            C_t = C_t_new
+            C_c = C_c_new
+            C_oxy = C_c_new
+
+            # 只在达到扩散时间时更新SaO2
+            if t_diff >= controlPars.DF:
+                # Recalculate
+                PO2_new = C_c_new / alpha_b
+                SaO2_new = saturation(PO2_new)
+                SaO2 = SaO2_new
+                
+                # 重置时间计数
+                t_diff_onset = t
+
 
         if cerebralVeinsOn==0:
 
